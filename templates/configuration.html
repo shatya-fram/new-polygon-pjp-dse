@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ page_title }} — NEW POLYGON PJP DSE</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/territory.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/configuration.css') }}">
+<script>
+  /* Before the first paint, not after — the same nine lines the Preview page
+     uses. A light-mode reader should never watch the page render dark and
+     then flip. */
+  (function () {
+    try {
+      var s = localStorage.getItem("apl.theme");
+      var m = (s === "dark" || s === "light") ? s
+        : (window.matchMedia
+           && window.matchMedia("(prefers-color-scheme: light)").matches
+           ? "light" : "dark");
+      document.documentElement.setAttribute("data-boot-theme", m);
+    } catch (e) { /* private window — the default dark stands */ }
+  })();
+</script>
+</head>
+<body class="terr preview files config">
+
+{% include "_nav.html" %}
+
+<div class="pv-wrap">
+
+  <!-- ── what this database holds, and what each page can do with it ──── -->
+  <section class="cfg-top">
+    <div class="cfg-store">
+      <h2>This application</h2>
+      <div class="cfg-storeline">
+        <span class="mono" id="dbName">—</span>
+        <span class="muted small" id="dbSize"></span>
+      </div>
+      <p class="hint" id="dirNote">Layer folder: <span class="mono">—</span></p>
+      <p class="hint" id="scopeNote">Region scope: <span class="mono">—</span></p>
+      <p class="hint">Its own database and its own layer folder. Nothing here
+        reads or writes the application on port 5001.</p>
+    </div>
+
+    <div class="cfg-ready">
+      <h2>What each page can do right now</h2>
+      <div class="cfg-pages" id="pages">
+        <span class="muted small">checking…</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="cfg-grid">
+
+    <!-- ── the requirement, in Layer Model order ──────────────────────── -->
+    <section class="cfg-req">
+      <div class="cfg-head">
+        <h2>Data layers this application needs</h2>
+        <button type="button" id="refresh" class="rtab">Refresh</button>
+      </div>
+
+      {% for slot in slots %}
+      <div class="cfg-slot" data-slot="{{ slot.key }}">
+        <div class="cfg-slothead">
+          <h3>{{ slot.label }}</h3>
+          <span class="cfg-slotcount" data-slot="{{ slot.key }}">…</span>
+        </div>
+        <p class="cfg-slotnote">{{ slot.note }}</p>
+
+        {% for ly in by_slot[slot.key] %}
+        <article class="cfg-card" data-key="{{ ly.key }}">
+          <div class="cfg-cardhead">
+            <span class="cfg-dot" data-state="unknown"></span>
+            <h4>{{ ly.label }}</h4>
+            <span class="cfg-state pill">…</span>
+          </div>
+          <p class="cfg-why">{{ ly.why }}</p>
+          <div class="cfg-fields">
+            <span class="cfg-lab">needs</span>
+            <span class="mono small">{{ ly.fields }}</span>
+          </div>
+          <div class="cfg-fields">
+            <span class="cfg-lab">example</span>
+            <span class="small muted">{{ ly.example }}</span>
+          </div>
+          <div class="cfg-stat small muted">—</div>
+          <div class="cfg-actions">
+            <button type="button" class="primary small-btn cfg-up"
+                    data-key="{{ ly.key }}">Upload</button>
+            {% if ly.template %}
+            <a class="rtab" href="/api/configuration/template/{{ ly.key }}">Template</a>
+            {% endif %}
+            <span class="muted small">{{ ly.kinds | join(' · ') }}</span>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+      {% endfor %}
+
+      <div class="cfg-tier">
+        <div class="cfg-tierhead">
+          <span class="cfg-tiername">derived</span>
+          <span class="muted small">Computed from the files above, not
+            uploaded. Importing every file is not the same as being ready.</span>
+        </div>
+
+        {% for d in derivations %}
+        <article class="cfg-card cfg-derive" data-step="{{ d.key }}">
+          <div class="cfg-cardhead">
+            <span class="cfg-dot" data-state="unknown"></span>
+            <h3>{{ d.label }}</h3>
+            <span class="cfg-state pill">…</span>
+          </div>
+          <p class="cfg-why">{{ d.why }}</p>
+          <div class="cfg-stat small muted">—</div>
+          <div class="cfg-actions">
+            <button type="button" class="primary small-btn cfg-run"
+                    data-step="{{ d.key }}" disabled>Run</button>
+            <span class="muted small cfg-blocked"></span>
+          </div>
+          <pre class="cfg-log" hidden></pre>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <!-- ── upload, and what is already on this server ─────────────────── -->
+    <aside class="cfg-side">
+      <section class="fm-upload">
+        <h2>Upload</h2>
+
+        <label class="fm-lab" for="slot">Which data layer</label>
+        <select id="slot">
+          <option value="">— pick a data layer —</option>
+          {% for s in slots %}
+          <optgroup label="{{ s.label }}">
+            {% for ly in by_slot[s.key] %}
+            <option value="{{ ly.key }}">{{ ly.label }}</option>
+            {% endfor %}
+          </optgroup>
+          {% endfor %}
+        </select>
+
+        <div class="drop" id="drop">
+          <strong>Drop a file here</strong>
+          or click to browse
+        </div>
+        <input type="file" id="file" hidden>
+
+        <div id="queue" class="fm-queue"></div>
+
+        <label class="check"><input type="checkbox" id="upImport" checked>
+          Import it straight away</label>
+
+        <div class="actions">
+          <button type="button" id="upBtn" class="primary small-btn" disabled>Upload</button>
+          <button type="button" id="upClear" class="ghost small-btn" disabled>Clear</button>
+        </div>
+        <div id="upMsg" class="fm-msg"></div>
+        <p class="hint">The data layer you pick decides how the file is read —
+          a polygon export, a table of places, or a workbook of reference
+          figures. Nothing is guessed from the file name, so a master workbook
+          can never end up scattered across the map as points.</p>
+      </section>
+
+      <!-- SAMPLE OVERLAYS
+           Not a data layer. Somebody's own working file, previewed over the
+           layers rather than becoming one, so it lives in its own section
+           and is removed by its own button. -->
+      <section class="fm-list smpcfg">
+        <div class="fm-head">
+          <h2>Sample overlays</h2>
+          <span class="muted small" id="smpCfgMode"></span>
+        </div>
+        <p class="hint">A DSE → outlet workbook is read <b>in the browser</b>
+          on the <a href="/preview-polygon">Preview Polygon</a> page and drawn
+          over the permanent layers. Nothing is uploaded to preview one, which
+          is what makes it safe on a shared host and why a 2.5 MB file appears
+          in about a quarter of a second.</p>
+        <p class="hint">Anything <b>kept on this server</b> is visible to
+          everyone who opens that page. Removing one asks for a PIN — a guard
+          against a careless click, not access control.</p>
+        <div id="smpCfgList"><span class="muted small">loading…</span></div>
+        <div id="smpCfgMsg" class="fm-msg"></div>
+      </section>
+
+      <section class="fm-list">
+        <div class="fm-head">
+          <h2>Files on this server</h2>
+          <span class="muted small" id="fileCount"></span>
+        </div>
+        <div id="files"><span class="muted small">loading…</span></div>
+      </section>
+    </aside>
+  </div>
+
+  <p class="hint pv-note">
+    Uploading a name that already exists never overwrites — the new one becomes
+    <code>name (2)</code>, so the previous generation is still there to compare
+    against. A file that cannot be read is kept rather than deleted: a parse
+    failure is nearly always the wrong file for the slot, and removing it hides
+    which one it was.
+  </p>
+</div>
+
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+<script src="{{ url_for('static', filename='js/configuration.js') }}"></script>
+</body>
+</html>

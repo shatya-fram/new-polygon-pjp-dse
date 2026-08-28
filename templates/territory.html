@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ page_title }} — NEW POLYGON PJP DSE</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/territory.css') }}">
+</head>
+<body class="terr">
+
+{% include "_nav.html" %}
+
+<div class="terr-wrap">
+  <aside class="terr-side">
+
+    <section data-group="POI">
+      <h2>Catalogue</h2>
+      <label class="fieldlabel" for="poiSource">Source</label>
+      <select id="poiSource">
+        {% for key, s in sources.items() %}
+        <option value="{{ key }}" {{ 'selected' if key == default_source }}>{{ s.label }}</option>
+        {% endfor %}
+      </select>
+      <p class="hint" id="sourceNote"></p>
+
+      <label class="fieldlabel" for="poiCategory">Category</label>
+      <select id="poiCategory"><option value="">All categories</option></select>
+
+      <label class="fieldlabel" for="poiBrand">Brand</label>
+      <select id="poiBrand"><option value="">All brands</option></select>
+
+      <label class="fieldlabel" for="poiMc">Microcluster</label>
+      <select id="poiMc"><option value="">All microclusters</option></select>
+
+      <div id="styleBox" class="stylebox"></div>
+
+      <p class="hint">Every list is counted from the source you picked, so an
+        option that would return nothing never appears.</p>
+    </section>
+
+    <section data-group="Boundaries">
+      <h2>Boundaries</h2>
+      <div id="boundaryList" class="layer-list"><span class="muted small">…</span></div>
+      <p class="hint">Both can be on at once. Kecamatan and MC do not nest —
+        an MC can straddle several kabupaten — so they are drawn as
+        independent overlays and a click reports whichever contain the point.</p>
+    </section>
+
+    <section data-group="Operators">
+      <h2>Service points</h2>
+      <div id="operatorList" class="layer-list"><span class="muted small">…</span></div>
+    </section>
+
+    <div class="side-run">
+      <button type="button" id="poiApply" class="primary small-btn">Apply configuration</button>
+      <button type="button" id="poiOff" class="ghost small-btn">Hide POIs</button>
+      <p class="runnote">Applies the catalogue above and refreshes the map,
+        the counters and the summary line.</p>
+    </div>
+  </aside>
+
+  <main class="terr-main">
+    <div class="cfgbar" id="cfgbar"></div>
+    <div id="map"></div>
+    <div id="legend" class="maplegend"></div>
+
+    <section class="results-block">
+      <div class="results-head">
+        <div class="rtabs">
+          <button type="button" class="rtab on" data-pane="paneCounts">POI counts</button>
+          <button type="button" class="rtab" data-pane="paneSel">Selection</button>
+        </div>
+        <span class="muted small" id="insightTotal"></span>
+        <span class="muted small">click a counter for the rows behind it</span>
+      </div>
+      <div class="rpane" id="paneCounts">
+        <div class="counters" id="counters"><span class="muted small">…</span></div>
+      </div>
+      <div class="rpane" id="paneSel" hidden>
+        <div class="terr-panel" id="panel">
+          <div class="panel-empty muted">
+            Click anywhere on the map to read the performance of the kecamatan
+            and the microcluster underneath it.
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="modal" class="modal" hidden>
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 id="modalTitle">—</h3>
+      <button type="button" id="modalClose" class="ghost small-btn">Close</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  window.TERR = {
+    lat: {{ lat }}, lon: {{ lon }},
+    operators: {{ operators | tojson }},
+    styles: {{ styles | tojson }},
+    sources: {{ sources | tojson }},
+    mode: "retail"
+  };
+</script>
+<script src="{{ url_for('static', filename='js/territory.js') }}"></script>
+<script src="{{ url_for('static', filename='js/insights.js') }}"></script>
+<script src="{{ url_for('static', filename='js/sidetabs.js') }}"></script>
+</body>
+</html>

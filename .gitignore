@@ -1,0 +1,33 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.parquet
+exports/*
+!exports/.gitkeep
+.DS_Store
+.server-port
+
+# Release artefacts. The scrubbed database and the tarball are built, not
+# authored, and the tarball is 51 MB of data that has no business in git.
+dist/
+data/public/
+
+# ── source data, never in git ─────────────────────────────────────────────
+# The repository carries the application. The data it reads is 2 GB of
+# commercial exports and somebody's working files, it changes wholesale on
+# every refresh, and git would keep every version of it forever. It travels
+# to the server by rsync instead — see DEPLOY.md.
+Data Upload/
+Data Samples/
+data/mapcache/
+_to_delete/
+
+# Built, not authored.
+*.tar.gz
+
+# Artefacts of a network mount, not files anyone authored.
+.fuse_hidden*

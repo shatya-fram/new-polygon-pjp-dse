@@ -1,0 +1,40 @@
+{# Served for every path that is not part of Map Workspace when
+   WORKSPACE_ONLY is set. It is a 404 rather than a 403 on purpose: a
+   refusal still confirms the path exists. This says only that this server
+   does not serve it, and does not name what it does serve beyond the one
+   page a visitor already has a link to. #}
+<!doctype html>
+<html lang="en" data-boot-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Not found</title>
+<style>
+  :root { --bg:#f3f2f2; --panel:#fff; --ink:#201e1d; --mut:#6b6b6b;
+          --red:#ec3013; }
+  * { box-sizing:border-box; border-radius:0; }
+  body { margin:0; min-height:100vh; display:grid; place-items:center;
+         background:var(--bg); color:var(--ink); padding:24px;
+         font-family:"Archivo","Helvetica Neue",Arial,system-ui,sans-serif; }
+  .card { max-width:460px; background:var(--panel);
+          border:2px solid var(--ink); padding:26px 28px; }
+  .k { display:block; font:600 9.5px/1.2 inherit; letter-spacing:.1em;
+       text-transform:uppercase; color:var(--red); }
+  h1 { font:700 22px/1.25 inherit; margin:8px 0 10px; }
+  p  { font:400 13px/1.65 inherit; color:var(--mut); margin:0 0 16px; }
+  a.nb { display:inline-block; font:500 11px/1.25 inherit; padding:7px 12px;
+         border:1.5px solid var(--red); background:var(--red); color:#fff;
+         text-decoration:none; }
+  a.nb:hover { background:#c9280f; border-color:#c9280f; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <span class="k">404</span>
+    <h1>Not on this server</h1>
+    <p>This instance publishes one page — the map workspace. Everything else
+      in the application runs on the local copy, where the data is loaded.</p>
+    <a class="nb" href="/map-workspace">Open the map workspace</a>
+  </div>
+</body>
+</html>

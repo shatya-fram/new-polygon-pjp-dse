@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ page_title }} — NEW POLYGON PJP DSE</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/territory.css') }}">
+</head>
+<body class="terr preview files">
+
+{% include "_nav.html" %}
+
+<div class="pv-wrap">
+
+  <div class="fm-grid">
+    <section class="fm-upload">
+      <h2>Upload to the local server</h2>
+
+      <label class="fm-lab" for="role">Data type</label>
+      <select id="role">
+        <option value="">Guess from the file name</option>
+      </select>
+
+      <div class="drop" id="drop">
+        <strong>Drop files here</strong>
+        or click to browse &mdash; several at once is fine
+      </div>
+      <input type="file" id="file" hidden multiple>
+
+      <div id="queue" class="fm-queue"></div>
+
+      <label class="check"><input type="checkbox" id="upImport" checked>
+        Import each one straight away</label>
+
+      <div class="actions">
+        <button type="button" id="upBtn" class="primary small-btn" disabled>Upload</button>
+        <button type="button" id="upClear" class="ghost small-btn" disabled>Clear</button>
+      </div>
+      <div id="upMsg" class="fm-msg"></div>
+      <p class="hint">The data type above applies to every file in the batch, so
+        pick one layer and add as many files to it as you like. They upload one
+        after another, so a failure stops at that file rather than taking the
+        batch with it.</p>
+
+      <p class="hint" id="dirNote"></p>
+    </section>
+
+    <section class="fm-list">
+      <div class="fm-head">
+        <h2>Files on this server</h2>
+        <div class="fm-bulk">
+          <label class="check fm-all"><input type="checkbox" id="selAll"> Select all</label>
+          <span id="selCount" class="muted small"></span>
+          <button type="button" id="bulkImport" class="rtab" disabled>Import selected</button>
+          <button type="button" id="bulkDelete" class="rtab del" disabled>Delete selected</button>
+          <button type="button" id="refresh" class="rtab">Refresh</button>
+        </div>
+      </div>
+      <div id="files"><span class="muted small">loading…</span></div>
+    </section>
+  </div>
+
+  <p class="hint pv-note">
+    <b>Unload</b> drops the imported rows and leaves the file, so you can
+    re-import it later. <b>Delete</b> removes the file itself, and offers to
+    drop its data at the same time. Uploading a name that already exists never
+    overwrites — the new one becomes <code>name (2)</code>, so the previous
+    generation is still there to compare against.
+  </p>
+</div>
+
+<div id="modal" class="modal" hidden>
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 id="modalTitle">—</h3>
+      <button type="button" id="modalClose" class="ghost small-btn">Close</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/files.js') }}"></script>
+</body>
+</html>

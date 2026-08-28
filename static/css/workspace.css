@@ -1,0 +1,453 @@
+/* MAP WORKSPACE — "Polygon Sample Cloud"
+
+   A hard-edged Swiss sheet laid inside the application's own chrome. Every
+   corner is square and every division is an ink hairline whose thickness
+   carries the hierarchy: 2px for the structural splits, 1.5px for cells and
+   controls, 1.2px for pills, 1px for list rows.
+
+   ONE RULE WORTH KNOWING BEFORE READING ANY OF IT
+   A dashed border means "local" — read from a file on this desk, held in
+   this browser's memory, never sent anywhere. A solid border means "cloud" —
+   served by the application from its own database. The distinction is load
+   bearing, not decorative: it is how a reader tells at a glance which half
+   of what they are looking at would survive a sign-out. */
+
+.mwpage { background: #f3f2f2; }
+
+.mw {
+  --bg:#f3f2f2; --panel:#fff; --mapbg:#efedea; --ink:#201e1d;
+  --red:#ec3013; --red-d:#c9280f; --mut:#6b6b6b; --hair:#e2dfdb;
+  --tint:#ecdbd7; --rowhover:#f7ece9;
+  font-family:"Archivo","Helvetica Neue",Arial,system-ui,sans-serif;
+  background:var(--bg); color:var(--ink);
+  display:flex; flex-direction:column; overflow:hidden;
+  height:calc(100vh - 46px);          /* JS refines this from the real nav */
+}
+.mw *, .mw *::before, .mw *::after { box-sizing:border-box; border-radius:0; }
+.mw button { font-family:inherit; cursor:pointer; }
+
+/* ── the bar: brand, views, session chips ───────────────────────────── */
+.mw-bar {
+  flex:none; height:48px; display:flex; align-items:center; gap:14px;
+  padding:0 16px; background:var(--panel);
+  border-bottom:2px solid var(--ink);
+}
+.mw-brand { font:700 13px/1 inherit; letter-spacing:.02em; color:var(--red); }
+.mw-tabs { display:flex; gap:8px; }
+.mw-chips { margin-left:auto; display:flex; align-items:center; gap:10px; }
+
+/* ── the two atoms everything else is built from ────────────────────── */
+.mw .nb {
+  font:500 11px/1.25 inherit; text-align:left; padding:6px 11px;
+  border:1.5px solid var(--ink); background:var(--panel); color:var(--ink);
+}
+.mw .nb:hover { background:var(--tint); }
+.mw .nb.on { background:var(--red); border-color:var(--red); color:#fff; }
+.mw .nb.on:hover { background:var(--red-d); border-color:var(--red-d); }
+.mw .nb.dash { border-style:dashed; }
+.mw .nb[disabled] { opacity:.45; cursor:default; }
+.mw .nb.wide { display:block; width:100%; text-align:center; }
+
+.mw .pill {
+  font:500 10px/1.3 inherit; white-space:nowrap; padding:4px 8px;
+  border:1.2px solid var(--ink); background:var(--panel); color:var(--ink);
+}
+.mw .pill.dash { border-style:dashed; }
+.mw .pill.red { border-color:var(--red); color:var(--red); cursor:pointer; }
+
+.mw .k {
+  display:block; font:600 9.5px/1.2 inherit; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--mut);
+}
+.mw .inp {
+  width:100%; font:400 11px/1.3 inherit; padding:7px 9px; margin-top:6px;
+  border:1.5px solid var(--ink); background:var(--panel); color:var(--ink);
+}
+.mw .cell { border:1.5px solid var(--ink); background:var(--panel); padding:12px; }
+.mw .cell.dash { border-style:dashed; }
+.mw .cell.red { border-color:var(--red); }
+.mw .hand { font:400 11px/1.4 inherit; color:var(--red); font-style:italic; }
+
+/* ── views ──────────────────────────────────────────────────────────── */
+.mw-view { flex:1; min-height:0; display:none; }
+.mw-view.on { display:grid; }
+.mw-view.scroll.on { display:block; overflow:auto; padding:20px 16px 28px; }
+
+/* ── MAP WORKSPACE ──────────────────────────────────────────────────── */
+.mw-map { grid-template-columns:230px 1fr 300px; }
+.mw-rail, .mw-insp {
+  padding:14px; background:var(--panel); overflow:auto;
+  display:flex; flex-direction:column; gap:14px; min-height:0;
+}
+.mw-rail { border-right:2px solid var(--ink); }
+.mw-insp { border-left:2px solid var(--ink); gap:12px; }
+.mw-grp { margin-top:8px; display:flex; flex-direction:column; gap:6px; }
+.mw-grp .nb { display:block; width:100%; }
+.mw-railfoot { margin-top:auto; display:flex; flex-direction:column; gap:6px; }
+
+.mw-mapwrap { position:relative; background:var(--mapbg); min-height:0; }
+#mwMap { position:absolute; inset:0; background:var(--mapbg); }
+.mw-foot {
+  position:absolute; left:14px; bottom:14px; z-index:500;
+  display:flex; gap:8px; flex-wrap:wrap; max-width:calc(100% - 28px);
+}
+.mw-busy {
+  position:absolute; right:14px; top:14px; z-index:500;
+  font:500 10px/1.3 inherit; padding:4px 8px;
+  border:1.2px solid var(--ink); background:var(--panel);
+}
+
+.mw-ititle { font:700 15px/1.25 inherit; }
+.mw-isub { font:400 11px/1.6 inherit; color:var(--mut); }
+.mw-stats { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.mw-stats .cell { padding:9px; }
+.mw-stats b { display:block; font:700 16px/1.2 inherit; margin-top:4px; }
+.mw-list { display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+.mw-row {
+  display:flex; gap:8px; font:500 11px/1.3 inherit;
+  border-bottom:1px solid var(--hair); padding-bottom:5px;
+}
+.mw-row > span:first-child {
+  flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.mw-row > span:last-child { color:var(--mut); }
+.mw-row.click { cursor:pointer; }
+.mw-row.click:hover { background:var(--rowhover); }
+
+/* ── DASHBOARD ──────────────────────────────────────────────────────── */
+.mw-h1 { font:700 24px/1.2 inherit; margin:4px 0 0; }
+.mw-sheet { max-width:1180px; margin:0 auto; display:flex;
+            flex-direction:column; gap:16px; }
+.mw-5up { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; }
+.mw-5up b { display:block; font:700 26px/1.15 inherit; margin-top:6px; }
+.mw-5up .tag { display:inline-block; margin-top:8px; }
+.mw-2up { display:grid; grid-template-columns:1.4fr 1fr; gap:12px;
+          align-items:start; }
+.mw-bars { display:flex; flex-direction:column; gap:7px; margin-top:10px; }
+.mw-bar1 { display:flex; align-items:center; gap:8px; font:500 11px/1.3 inherit; }
+.mw-bar1 > span:first-child { width:150px; overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap; }
+.mw-bar1 i { flex:1; height:9px; background:#eae7e7; display:block; }
+.mw-bar1 i > b { display:block; height:100%; background:var(--red); }
+.mw-bar1 > span:last-child { width:52px; text-align:right; color:var(--mut); }
+.mw-alert { display:flex; align-items:center; gap:12px; }
+.mw-alert > div { flex:1; }
+
+/* ── TABLE ──────────────────────────────────────────────────────────── */
+.mw-tbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.mw-tbar .inp { width:auto; margin-top:0; }
+.mw-tbar .grow { flex:1; min-width:160px; }
+.mw-tblwrap { border:1.5px solid var(--ink); background:var(--panel);
+              overflow:auto; max-height:calc(100vh - 280px); }
+.mw-tr {
+  display:grid; grid-template-columns:110px 1.4fr 1fr 1.1fr 1.2fr 1fr 90px;
+  gap:8px; padding:7px 10px; font:500 11px/1.35 inherit;
+  border-bottom:1px solid var(--hair);
+}
+.mw-tr > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mw-tr.head { position:sticky; top:0; background:var(--panel); z-index:2;
+  border-bottom:1.5px solid var(--ink); }
+.mw-tr.head span { font:600 9.5px/1.2 inherit; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--mut); }
+.mw-tr.body { cursor:pointer; }
+.mw-tr.body:hover { background:var(--rowhover); }
+.mw-tr.sel { background:#fbeeeb; }
+.mw-flag { color:var(--red); font-weight:600; }
+
+/* ── LOCAL DATA ─────────────────────────────────────────────────────── */
+.mw-steps { max-width:760px; margin:0 auto; display:flex;
+            flex-direction:column; gap:14px; }
+.mw-drop { padding:22px; text-align:center; border:1.5px dashed var(--ink);
+           background:var(--panel); margin-top:10px; }
+.mw-drop.over { background:var(--tint); }
+.mw-btns { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;
+           justify-content:center; }
+.mw-mapgrid { display:grid; grid-template-columns:1fr 1fr; gap:8px;
+              margin-top:10px; }
+.mw-chip {
+  font:500 11px/1.3 inherit; padding:6px 9px; border:1.2px solid var(--ink);
+  background:var(--panel); overflow:hidden; text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.mw-chip.miss { border-color:var(--red); color:var(--red); border-style:dashed; }
+.mw-note { font:400 11px/1.6 inherit; color:var(--mut); }
+.mw-err { font:500 11px/1.5 inherit; color:var(--red); margin-top:10px; }
+
+@media (max-width:1180px) {
+  .mw-map { grid-template-columns:200px 1fr 260px; }
+  .mw-5up { grid-template-columns:repeat(3,1fr); }
+  .mw-2up { grid-template-columns:1fr; }
+}
+
+/* ── FOLDING RAIL SECTIONS ───────────────────────────────────────────
+   The rail is 230px and five sections deep. Somebody hunting through the
+   territory tree wants that tree tall and everything else folded away, so
+   every section header is a toggle rather than a label. */
+.mw-sec { display:flex; flex-direction:column; }
+.mw .kfold {
+  display:flex; align-items:center; gap:6px; width:100%; text-align:left;
+  background:none; border:0; padding:0 0 2px; cursor:pointer;
+  font:600 9.5px/1.4 inherit; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--mut);
+}
+.mw .kfold:hover { color:var(--ink); }
+.mw .kfold::after {
+  content:"–"; margin-left:auto; font:600 12px/1 inherit; color:var(--mut);
+}
+.mw .kfold[aria-expanded="false"]::after { content:"+"; }
+.mw .kfold[aria-expanded="false"] + .mw-fold { display:none; }
+.mw-fold { display:flex; flex-direction:column; }
+.mw-fold .inp + .inp { margin-top:6px; }
+
+/* ── DSE ROSTER UNDER A TERRITORY ────────────────────────────────────
+   Dashed, because this list is read from your file and not from the
+   server: the cloud knows the shape of the organisation, your workbook
+   knows who is in it. */
+.mw-dselist {
+  margin-top:8px; max-height:210px; overflow:auto;
+  border:1.2px dashed var(--ink); background:var(--panel);
+}
+.mw-dselist:empty { display:none; }
+.mw-drow {
+  display:flex; gap:8px; width:100%; text-align:left; cursor:pointer;
+  padding:6px 9px; background:none; border:0;
+  border-bottom:1px solid var(--hair); font:500 11px/1.3 inherit;
+  color:var(--ink);
+}
+.mw-drow:last-child { border-bottom:0; }
+.mw-drow:hover { background:var(--rowhover); }
+.mw-drow.on { background:var(--red); color:#fff; }
+.mw-drow > span:first-child {
+  flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.mw-drow > span:last-child { color:var(--mut); font-variant-numeric:tabular-nums; }
+.mw-drow.on > span:last-child { color:#fff; }
+.mw-dsehead {
+  padding:6px 9px; border-bottom:1.2px solid var(--ink);
+  font:600 9.5px/1.3 inherit; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--mut); background:var(--panel);
+  position:sticky; top:0; z-index:1;
+}
+
+/* ── THE CLOUD HALF OF THE INSPECTOR ─────────────────────────────────
+   Solid tiles under the dashed ones: the size of the area, who lives in
+   it, and the masts in it are the application's own figures. */
+.mw-cloudhead { margin-top:4px; }
+.mw-cov {
+  position:relative; display:block; height:12px; margin-top:6px;
+  background:var(--sunkfill,#eae7e7);
+}
+.mw-cov i { position:absolute; inset:0 auto 0 0; background:var(--red); display:block; }
+
+/* ── MAP COLUMN: MAP OVER LEDGER ─────────────────────────────────────
+   The inspector on the right is the glance. This is the ledger, and it
+   only takes height when there is something in it. */
+.mw-mapcol { display:grid; grid-template-rows:1fr auto; min-height:0; }
+.mw-drawer {
+  border-top:2px solid var(--ink); background:var(--panel);
+  display:flex; flex-direction:column; max-height:340px; min-height:0;
+}
+.mw-dhead {
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  padding:9px 12px; border-bottom:1px solid var(--hair);
+}
+.mw-dtitle { font:700 13px/1.3 inherit; }
+.mw-dgap { flex:1; }
+.mw-dtabs { display:flex; gap:6px; }
+.mw-dstats {
+  grid-template-columns:repeat(auto-fit,minmax(112px,1fr));
+  gap:8px; padding:10px 12px; border-bottom:1px solid var(--hair);
+}
+.mw-dstats .cell { padding:8px 9px; }
+.mw-dstats b { display:block; font:700 15px/1.2 inherit; margin-top:3px; }
+.mw-dwrap { overflow:auto; min-height:0; flex:1; }
+.mw-dmsg { padding:8px 12px 12px; }
+
+.mw-dtr {
+  display:grid; gap:8px; padding:6px 12px; font:500 11px/1.35 inherit;
+  border-bottom:1px solid var(--hair-soft,#eeeae7);
+  grid-template-columns:1.3fr 1fr 1.1fr 84px 92px 96px 68px 60px 74px;
+}
+.mw-dtr.out { grid-template-columns:100px 1.4fr .9fr 1fr 1fr .9fr .8fr 82px 82px; }
+.mw-dtr > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mw-dtr > span.n { text-align:right; font-variant-numeric:tabular-nums; }
+.mw-dtr.head {
+  position:sticky; top:0; z-index:2; background:var(--panel);
+  border-bottom:1.5px solid var(--ink);
+}
+.mw-dtr.head span {
+  font:600 9.5px/1.2 inherit; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--mut);
+}
+.mw-dtr.body { cursor:pointer; }
+.mw-dtr.body:hover { background:var(--rowhover); }
+
+/* Coverage as a bar behind the number, so twenty rows sort themselves
+   visually before anybody reads a digit. */
+.mw-cbar { position:relative; display:inline-block; min-width:62px; text-align:right; }
+.mw-cbar i {
+  position:absolute; left:0; top:50%; transform:translateY(-50%);
+  height:12px; display:block; background:rgba(236,48,19,.20);
+}
+.mw-cbar b { position:relative; font-weight:600; }
+.mw-cbar.full i { background:rgba(120,170,120,.32); }
+.mw-cbar.thin i { background:rgba(236,48,19,.34); }
+
+/* ── BORDER-MODEL CONTROLS ───────────────────────────────────────────*/
+#mwModes .nb small {
+  display:block; font:400 9px/1.3 inherit; color:var(--mut); margin-top:1px;
+}
+#mwModes .nb.on small { color:rgba(255,255,255,.8); }
+.mw-reach {
+  display:block; margin-top:8px; font:600 9.5px/1.4 inherit;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--mut);
+}
+.mw-reach b { color:var(--ink); }
+.mw-reach input { width:100%; margin-top:6px; accent-color:var(--red); }
+
+/* ── LAYER SWATCHES IN THE RAIL ──────────────────────────────────────
+   Each cloud-layer button carries the line it actually draws — same hue,
+   same weight, same dash — so the rail is a legend as well as a switch. */
+.mw .nb .mw-swatch {
+  display:inline-block; width:16px; height:0; vertical-align:middle;
+  margin-right:8px; border-top-style:solid;
+}
+.mw .nb .mw-swatch.dot {
+  width:8px; height:8px; border:1px solid var(--ink); border-radius:50%;
+}
+.mw .nb.on .mw-swatch { filter:brightness(1.9) saturate(.3); }
+
+/* ── DSE-BY-DESA MATRIX ──────────────────────────────────────────────
+   Read down a column to find the reps holding a single desa; read across
+   a row to see the shape of a branch. Every count is a link into the
+   reps behind it, so the table is a way in and not just a report. */
+.mw-slabhead { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.mw-lvl { display:flex; gap:6px; }
+.mw-mtxwrap { overflow-x:auto; margin-top:10px; }
+.mw-mtx {
+  display:grid; min-width:760px;
+  grid-template-columns:1.6fr repeat(7,60px) 66px 66px 76px;
+}
+.mw-mtx > span {
+  padding:7px 8px; font:500 11px/1.35 inherit;
+  border-bottom:1px solid var(--hair-soft,#eeeae7);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.mw-mtx > span.n { text-align:right; font-variant-numeric:tabular-nums; }
+.mw-mtx > span.head {
+  font:600 9.5px/1.25 inherit; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--mut); border-bottom:1.5px solid var(--ink);
+  white-space:normal; position:sticky; top:0; background:var(--panel);
+}
+.mw-mtx > span.tot { font-weight:700; }
+.mw-mtx > span.grp { font-weight:600; }
+.mw-mtx > span.all { background:var(--sunk,#eae7e5); font-weight:700; }
+.mw-mtx > span.hit { cursor:pointer; color:var(--red); font-weight:700; }
+.mw-mtx > span.hit:hover { background:var(--rowhover); }
+.mw-mtx > span.zero { color:var(--mut); }
+
+/* the drill-down list under the matrix */
+.mw-drill { margin-top:12px; border:1.5px solid var(--ink); background:var(--panel); }
+.mw-drillhead {
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  padding:8px 10px; border-bottom:1.5px solid var(--ink);
+}
+.mw-drillrow {
+  display:grid; grid-template-columns:1.2fr 1.6fr 70px 70px 78px 110px;
+  gap:8px; padding:6px 10px; font:500 11px/1.35 inherit; align-items:center;
+  border-bottom:1px solid var(--hair-soft,#eeeae7);
+}
+.mw-drillrow > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mw-drillrow > span.n { text-align:right; font-variant-numeric:tabular-nums; }
+.mw-drillrow.head span {
+  font:600 9.5px/1.2 inherit; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--mut);
+}
+.mw-drillrow .nb { padding:3px 8px; font-size:10px; }
+
+/* the matrix gained an assignments column */
+.mw-mtx { grid-template-columns:1.5fr repeat(7,56px) 62px 62px 70px 72px; }
+.mw-drillrow { grid-template-columns:1.4fr 1.5fr 66px 66px 74px 110px; }
+
+/* ── BORDER LABELS ───────────────────────────────────────────────────
+   The code sits on the patch so a reader is not hovering to find out
+   whose it is. Cased in the page background rather than boxed, so a
+   label never hides the boundary it is naming. */
+.mw-lab {
+  background: none; border: 0; box-shadow: none; padding: 0;
+  font: 700 10px/1.1 "Archivo", Arial, sans-serif;
+  color: var(--ink); white-space: nowrap;
+  text-shadow: 0 0 3px var(--panel), 0 0 3px var(--panel),
+               0 0 6px var(--panel), 0 0 6px var(--panel);
+}
+.mw-lab::before { display: none; }
+.mw .checkline { display:flex; align-items:center; gap:7px;
+  font:500 11px/1.3 inherit; cursor:pointer; }
+.mw .checkline input { accent-color: var(--red); }
+#mwBorderView .nb small {
+  display:block; font:400 9px/1.3 inherit; color:var(--mut); margin-top:1px;
+}
+#mwBorderView .nb.on small { color:rgba(255,255,255,.8); }
+
+/* ── PJP REVIEW ─────────────────────────────────────────────────────────
+   Nine columns. The two that carry the finding are the gap the rep has to
+   cross and the rep recommended to take it, so those are the two set in
+   ink; everything else is context and is set quieter. */
+.mw-rebbar {
+  display:flex; align-items:center; gap:9px; flex-wrap:wrap;
+  padding:9px 10px; border-bottom:1.5px solid var(--ink); background:var(--panel);
+}
+.mw-rebbar .k { display:inline; }
+.mw-rebbar input[type=range] { width:140px; accent-color:var(--red); }
+.mw-rebbar b { font:700 13px/1 inherit; }
+.mw-rebbar .mw-note { flex:1; min-width:240px; }
+.mw-rebsum {
+  padding:8px 10px; border-bottom:1px solid var(--hair); background:var(--panel);
+}
+.mw-dtr.reb {
+  grid-template-columns:110px 1.3fr 1fr 1.25fr 78px 122px 1.2fr 78px 80px;
+}
+.mw-gain { color:var(--red); font-weight:700; }
+.mw-why { color:var(--mut); font-weight:400; }
+
+/* ── OUTLET IDENTITY CHECK ──────────────────────────────────────────────
+   A count on the right, and under each label the sentence that says what
+   the count means. The explanation is not optional here: the headline
+   number and the number that matters are different numbers, and a reader
+   who sees only the headline draws the wrong conclusion. */
+.mw-dupetitle { font:700 15px/1.3 inherit; margin:4px 0 2px; }
+.mw-dupehead {
+  font:400 12px/1.6 inherit; color:var(--ink); padding-bottom:8px;
+  border-bottom:1px solid var(--hair);
+}
+.mw-dupehead b { font:700 15px/1.2 inherit; }
+.mw-ok { color:#3d7a46; font-weight:600; }
+.mw-row.dupe { align-items:flex-start; padding-bottom:8px; }
+.mw-row.dupe > span:first-child { white-space:normal; overflow:visible; }
+.mw-row.dupe > span:first-child > .mw-note { display:block; margin-top:2px; }
+.mw-row.dupe > span:last-child {
+  flex:none; width:64px; text-align:right; font:700 14px/1.3 inherit;
+  color:var(--ink); font-variant-numeric:tabular-nums;
+}
+.mw-row.dupe > span:last-child.mw-flag { color:var(--red); }
+
+/* ── SITE TYPE LEGEND ───────────────────────────────────────────────────
+   Sits under the Local sites button. A map of coloured dots with no key is
+   a map of coloured dots; the hues are assigned in order of first
+   appearance, so the legend is the only place the mapping is stated. */
+.mw-sitekey { display:flex; flex-wrap:wrap; gap:5px; margin-top:7px; }
+.mw-skey {
+  display:inline-flex; align-items:center; gap:5px;
+  font:500 10px/1.3 inherit; color:var(--mut);
+  border:1px dashed var(--hair); padding:3px 6px;
+}
+.mw-skey i {
+  width:8px; height:8px; flex:none; border:1px solid var(--ink);
+  display:block;
+}
+.mw-skey b { color:var(--ink); font-variant-numeric:tabular-nums; }
+
+/* The PJP review row whose polygon is currently outlined on the map. The
+   map and the table are one selection, so the table has to show which row
+   the amber outline belongs to. */
+.mw-dtr.reb.body.sel { background:#fbeeeb; box-shadow:inset 3px 0 0 #e08a00; }

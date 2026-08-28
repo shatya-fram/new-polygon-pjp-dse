@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ page_title }} — NEW POLYGON PJP DSE</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/territory.css') }}">
+</head>
+<body class="terr">
+
+{% include "_nav.html" %}
+
+<div class="terr-wrap">
+  <aside class="terr-side">
+
+    <section data-group="Layers">
+      <h2>Upload a layer</h2>
+      <div class="drop" id="drop">
+        <strong>Drop a KML or KMZ</strong>
+        sites, outlets or polygons — or click to browse
+      </div>
+      <input type="file" id="file" accept=".kml,.kmz" hidden>
+      <p class="hint">Attributes are read out of the placemark table, so
+        outlet code, DSE, microcluster and any sales figures come through as
+        real fields you can group by.</p>
+      <div id="uploadMsg" class="hint"></div>
+    </section>
+
+    <section data-group="Layers">
+      <h2>Layer folder</h2>
+      <p class="hint" id="localDir"></p>
+      <div id="localList" class="uplist"><span class="muted small">…</span></div>
+    </section>
+
+    <section data-group="Layers">
+      <h2>Uploaded layers</h2>
+      <div id="uplist" class="uplist"><span class="muted small">…</span></div>
+    </section>
+
+    <section data-group="Layers">
+      <h2>Group by</h2>
+      <select id="groupField"><option value="">— pick a field —</option></select>
+      <p class="hint">The tally appears under the map, on the
+        <b>Group by</b> tab — a result belongs with the other results, not
+        wedged into the middle of the controls that produced it.</p>
+    </section>
+
+    <section data-group="POI">
+      <h2>Catalogue</h2>
+      <label class="fieldlabel" for="poiSource">Source</label>
+      <select id="poiSource">
+        {% for key, s in sources.items() %}
+        <option value="{{ key }}" {{ 'selected' if key == default_source }}>{{ s.label }}</option>
+        {% endfor %}
+      </select>
+      <p class="hint" id="sourceNote"></p>
+      <label class="fieldlabel" for="poiCategory">Category</label>
+      <select id="poiCategory"><option value="">All categories</option></select>
+      <label class="fieldlabel" for="poiBrand">Brand</label>
+      <select id="poiBrand"><option value="">All brands</option></select>
+      <label class="fieldlabel" for="poiMc">Microcluster</label>
+      <select id="poiMc"><option value="">All microclusters</option></select>
+      <div id="styleBox" class="stylebox"></div>
+    </section>
+
+    <section data-group="Boundaries">
+      <h2>Boundaries</h2>
+      <div id="boundaryList" class="layer-list"><span class="muted small">…</span></div>
+      <p class="hint">Desa sits on top of the kecamatan and microcluster
+        outlines rather than inside them — a click reports whichever of the
+        three cover the point, so a desa whose kecamatan polygon is missing
+        shows up as a gap instead of disappearing.</p>
+    </section>
+
+    <section id="dseCoverage" data-group="Territory">
+      <h2>Territory model</h2>
+
+      <!-- The tab strip in sidetabs.js hides a tab when every section in its
+           group is hidden. Hiding this whole section while no layer is loaded
+           therefore made the Territory tab itself vanish and reappear, which
+           read as the feature going missing. The section now always exists;
+           only its body swaps for a prompt. -->
+      <div id="dseNeedsLayer" class="emptystate">
+        <b>No point layer loaded.</b>
+        Tick an uploaded layer on the <b>Layers</b> tab — or drop a KML/KMZ
+        there — and the territory model builds from whichever field identifies
+        the rep.
+      </div>
+
+      <div id="dseBody" hidden>
+      <div class="segmented" id="dseModes" role="radiogroup" aria-label="Territory model">
+        <button type="button" data-mode="existing" role="radio" aria-checked="false">
+          Existing<small>as uploaded</small></button>
+        <button type="button" data-mode="exclusive" class="on" role="radio" aria-checked="true">
+          Exclusive<small>no overlap</small></button>
+        <button type="button" data-mode="coverage" role="radio" aria-checked="false">
+          Coverage<small>overlaps</small></button>
+        <button type="button" data-mode="forcefit" role="radio" aria-checked="false">
+          Force fit<small>whole desa</small></button>
+      </div>
+      <p class="hint" id="dseModeNote"></p>
+
+      <div id="dseReadout" class="readout" hidden>
+        <div><b id="roPolys">—</b><span>polygons</span></div>
+        <div><b id="roArea">—</b><span>km² total</span></div>
+        <div><b id="roOverlap">—</b><span>overlap</span></div>
+        <div><b id="roSeam">—</b><span>on a seam</span></div>
+      </div>
+
+      <details class="cfg" id="dseCfg" open>
+        <summary>Configuration</summary>
+
+        <label class="fieldlabel" for="dseField">Group by</label>
+        <select id="dseField"></select>
+
+        <div class="derived-only">
+          <label class="fieldlabel" for="dseReach">
+            Reach <span id="dseReachVal">400 m</span></label>
+          <input type="range" id="dseReach" min="150" max="1200" step="50" value="400">
+          <p class="hint tight">How far a rep is assumed to serve from each
+            outlet. 400 m covers 94% of Kota Bekasi; 500 m already claims more
+            ground than the city has.</p>
+
+          <label class="fieldlabel" for="dseCell">
+            Resolution <span id="dseCellVal">200 m</span></label>
+          <input type="range" id="dseCell" min="50" max="500" step="50" value="200">
+          <p class="hint tight">Grid step. Finer is more detailed and slower;
+            it does not change who owns what, only how crisply the edge is
+            drawn.</p>
+        </div>
+
+        <label class="fieldlabel" for="dseFill">
+          Fill <span id="dseFillVal">6%</span></label>
+        <input type="range" id="dseFill" min="0" max="45" step="1" value="6">
+
+        <label class="checkline"><input type="checkbox" id="dseAuto" checked>
+          Redraw as I change settings</label>
+      </details>
+
+      <div class="actions">
+        <button type="button" id="dseDraw" class="primary small-btn">Draw</button>
+        <button type="button" id="dseOff" class="ghost small-btn">Clear</button>
+      </div>
+      <p class="hint">The readout and the per-DSE legend appear under the map,
+        on the <b>Territory model</b> tab.</p>
+      </div><!-- /#dseBody -->
+    </section>
+
+    <section id="desaTheme" data-group="Boundaries" hidden>
+      <h2>Colour desa by</h2>
+      <select id="desaField">
+        <option value="">— outline only —</option>
+        {% for t in kelurahan_themes %}
+        <option value="{{ t.field }}">{{ t.label }}</option>
+        {% endfor %}
+      </select>
+      <div id="desaLegend" class="uplist"></div>
+    </section>
+
+    <div class="side-run">
+      <button type="button" id="poiApply" class="primary small-btn">Apply configuration</button>
+      <button type="button" id="poiOff" class="ghost small-btn">Hide POIs</button>
+      <p class="runnote">Applies the catalogue and refreshes the map and the
+        summary line. Layer uploads and the territory model draw on their own
+        buttons, inside their tabs.</p>
+    </div>
+  </aside>
+
+  <main class="terr-main has-filter">
+    <div class="terrfilter" id="terrFilter"></div>
+    <div class="cfgbar" id="cfgbar"></div>
+    <div id="map"></div>
+    <div id="legend" class="maplegend"></div>
+
+    <section class="results-block">
+      <div class="results-head">
+        <div class="rtabs">
+          <button type="button" class="rtab on" data-pane="paneSel">Selection</button>
+          <button type="button" class="rtab" data-pane="paneGroup">Group by</button>
+          <button type="button" class="rtab" data-pane="paneTerr">Territory model</button>
+          <button type="button" class="rtab" data-pane="paneArea">Sales Area</button>
+        </div>
+        <span class="muted small">click the map to read what is underneath</span>
+      </div>
+      <div class="rpane" id="paneSel">
+        <div class="terr-panel" id="panel">
+          <div class="panel-empty muted">
+            Click the map to read the kecamatan and microcluster underneath, or
+            drop a KML/KMZ on the Layers tab to plot sites and outlets over it.
+          </div>
+        </div>
+      </div>
+      <div class="rpane" id="paneGroup" hidden>
+        <div id="groupOut" class="uplist">
+          <span class="muted small">Pick a field on the Layers tab to tally an
+            uploaded layer by any of its own attributes.</span>
+        </div>
+      </div>
+      <!-- Sales Area summary. Twelve rows you can take in at once, then
+           drill: Sales Area -> Microcluster -> Kecamatan -> Desa. Clicking a
+           row also drives the map, so the table and the polygons on screen
+           are always describing the same territory. -->
+      <div class="rpane" id="paneArea" hidden>
+        <div class="sa-head">
+          <nav class="sa-crumbs" id="saCrumbs"></nav>
+          <span class="muted small" id="saNote"></span>
+        </div>
+        <div class="sa-wrap"><table class="sa-table" id="saTable"></table></div>
+      </div>
+      <div class="rpane" id="paneTerr" hidden>
+        <div id="dseMsg" class="hint"></div>
+        <div id="dseLegend" class="uplist">
+          <span class="muted small">Load a polygon layer, then draw the
+            territory model on the Territory tab.</span>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  window.TERR = {
+    lat: {{ lat }}, lon: {{ lon }},
+    operators: {{ operators | tojson }},
+    styles: {{ styles | tojson }},
+    sources: {{ sources | tojson }},
+    kelurahanThemes: {{ kelurahan_themes | tojson }},
+    mode: "distribution"
+  };
+</script>
+<script src="{{ url_for('static', filename='js/territory.js') }}"></script>
+<script src="{{ url_for('static', filename='js/distribution.js') }}"></script>
+<script src="{{ url_for('static', filename='js/terrfilter.js') }}"></script>
+<script src="{{ url_for('static', filename='js/sales_area.js') }}"></script>
+<script src="{{ url_for('static', filename='js/sidetabs.js') }}"></script>
+</body>
+</html>

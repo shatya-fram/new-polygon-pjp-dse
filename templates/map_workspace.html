@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en" data-boot-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ page_title }} — NEW POLYGON PJP DSE</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/territory.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/workspace.css') }}">
+</head>
+<body class="terr mwpage">
+
+{% include "_nav.html" %}
+
+<div class="mw" id="mwRoot">
+
+  <div class="mw-bar">
+    <span class="mw-brand">POLYGON SAMPLE CLOUD</span>
+    <nav class="mw-tabs">
+      <button type="button" class="nb" data-view="dashboard">Dashboard</button>
+      <button type="button" class="nb on" data-view="map">Map workspace</button>
+      <button type="button" class="nb" data-view="table">DSE &times; Outlet</button>
+      <button type="button" class="nb" data-view="local">Local data</button>
+    </nav>
+    <span class="mw-chips">
+      <span class="pill dash" id="mwLocalChip">Local: not connected</span>
+      <span class="pill dash">Supervisor &middot; {{ home_name }}</span>
+      <button type="button" class="pill red" id="mwSignOut" hidden
+              title="Drop every local file from memory and reset the page">
+        Sign out &middot; clear local</button>
+    </span>
+  </div>
+
+  <!-- ══ MAP WORKSPACE ════════════════════════════════════════════════ -->
+  <div class="mw-view mw-map on" data-view="map">
+
+    <!-- Every section folds. The rail is 230px and five sections deep;
+         somebody hunting through the territory tree wants that tree tall
+         and everything else out of the way. -->
+    <aside class="mw-rail">
+
+      <div class="mw-sec" data-sec="search">
+        <button type="button" class="k kfold" aria-expanded="true">Search desa / kecamatan</button>
+        <div class="mw-fold">
+          <input class="inp" id="mwSearch" placeholder="e.g. PEGADUNGAN"
+                 autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+
+      <!-- REGION > AREA > SALES AREA > TERRITORY comes from the cloud;
+           the DSE under a territory come from the file on your desk. -->
+      <!-- WHICH POLYGON A CLICK IS ASKING ABOUT
+           With borders drawn they sit on top of the boundaries, so a click
+           could only ever profile the border. Naming the target settles it
+           before the click instead of after: pick Desa and a click answers
+           for the desa under the cursor whatever is drawn over it. -->
+      <div class="mw-sec" data-sec="target">
+        <button type="button" class="k kfold" aria-expanded="true">Profile on click</button>
+        <div class="mw-fold">
+          <select class="inp" id="mwTarget">
+            <option value="auto">Auto — whatever is on top</option>
+            <option value="border">DSE border polygon</option>
+            <option value="kelurahan">Desa / Kelurahan</option>
+            <option value="kecamatan">Kecamatan</option>
+            <option value="indosat_mc">Microcluster</option>
+            <option value="kabkot">Kota / Kabupaten</option>
+          </select>
+          <div class="mw-note" id="mwTargetNote" style="margin-top:8px">
+            Hover and click answer for whichever polygon is drawn on top.</div>
+        </div>
+      </div>
+
+      <div class="mw-sec" data-sec="terr">
+        <button type="button" class="k kfold" aria-expanded="true">Indosat territory</button>
+        <div class="mw-fold">
+          <select class="inp" id="mwRegion"><option value="">All regions</option></select>
+          <select class="inp" id="mwArea"><option value="">All areas</option></select>
+          <select class="inp" id="mwBranch"><option value="">All sales areas</option></select>
+          <select class="inp" id="mwTerr"><option value="">All territories</option></select>
+          <div class="mw-grp" style="margin-top:8px">
+            <button type="button" class="nb on" id="mwApply">Apply filter</button>
+            <button type="button" class="nb" id="mwClearTerr">Clear filter</button>
+          </div>
+          <div class="mw-note" id="mwTerrNote" style="margin-top:8px">Loading the territory tree…</div>
+          <div class="mw-dselist" id="mwDseList"></div>
+        </div>
+      </div>
+
+      <!-- THE SAME THREE DEFINITIONS THE REST OF THE APPLICATION USES
+           Exclusive, Coverage and Force fit are computed on the server from
+           (DSE, lat, lon) alone and nothing is kept. A second implementation
+           in the browser would be a second answer to "what is this rep's
+           patch" that could disagree with the Polygon Samples page. -->
+      <div class="mw-sec" data-sec="border">
+        <button type="button" class="k kfold" aria-expanded="true">Border polygon</button>
+        <div class="mw-fold">
+          <div class="mw-grp" id="mwModes">
+            <button type="button" class="nb on" data-mode="exclusive">Exclusive<small>no overlap</small></button>
+            <button type="button" class="nb" data-mode="coverage">Coverage<small>overlaps</small></button>
+            <button type="button" class="nb" data-mode="forcefit">Force fit<small>whole desa</small></button>
+          </div>
+          <label class="mw-reach">Reach <b id="mwReachVal">400 m</b>
+            <input type="range" id="mwReach" min="150" max="1200" step="50" value="400">
+          </label>
+          <div class="mw-grp">
+            <button type="button" class="nb dash on" id="mwBuild">Build borders</button>
+            <button type="button" class="nb dash" id="mwBorderOff">Hide borders</button>
+          </div>
+          <span class="k" style="margin-top:10px">How the border reads</span>
+          <div class="mw-grp" id="mwBorderView">
+            <button type="button" class="nb" data-bview="outline">Outline only<small>over busy layers</small></button>
+            <button type="button" class="nb on" data-bview="tint">Tinted<small>extent at a glance</small></button>
+            <button type="button" class="nb" data-bview="focus">Focus<small>mute everything else</small></button>
+          </div>
+          <label class="checkline" style="margin-top:8px">
+            <input type="checkbox" id="mwBorderLab" checked> Label the DSE</label>
+          <div class="mw-note" id="mwModelMsg" style="margin-top:8px">Load a
+            local file, then build the borders its outlets imply.</div>
+        </div>
+      </div>
+
+      <div class="mw-sec" data-sec="cloud">
+        <button type="button" class="k kfold" aria-expanded="true">Cloud layers</button>
+        <div class="mw-fold">
+          <div class="mw-grp" id="mwCloudGrp">
+            <button type="button" class="nb on" data-layer="kelurahan">Desa / Kelurahan</button>
+            <button type="button" class="nb on" data-layer="kecamatan">Kecamatan</button>
+            <button type="button" class="nb" data-layer="indosat_mc">Microcluster</button>
+            <button type="button" class="nb" data-layer="kabkot">Kota / Kabupaten</button>
+            {# SITE LOCATIONS ARE NOT A CLOUD LAYER ANY MORE.
+               The mast coordinates are not published to a shared server —
+               they are read from the user's own file, like the outlets, and
+               the upload is optional. The desa profile still reports how many
+               masts a desa holds, from the reference figures, so removing the
+               layer costs the dots on the map and no number. #}
+          </div>
+        </div>
+      </div>
+
+      <div class="mw-sec" data-sec="local">
+        <button type="button" class="k kfold" aria-expanded="true">Local layers</button>
+        <div class="mw-fold">
+          <div class="mw-grp" id="mwLocalGrp">
+            <button type="button" class="nb dash on" data-local="outlets"
+                    id="mwOutBtn">Outlets (0)</button>
+            <button type="button" class="nb dash" data-local="heat"
+                    id="mwHeatBtn">Density heatmap</button>
+            <button type="button" class="nb dash" data-local="lsites"
+                    id="mwLSiteBtn">Local sites (0)</button>
+            <div class="mw-sitekey" id="mwSiteKey" hidden></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mw-sec" data-sec="dse">
+        <button type="button" class="k kfold" aria-expanded="true">Filter by DSE</button>
+        <div class="mw-fold">
+          <select class="inp" id="mwDse"><option value="">All DSE</option></select>
+        </div>
+      </div>
+
+      <div class="mw-sec" data-sec="ground">
+        <button type="button" class="k kfold" aria-expanded="true">Basemap</button>
+        <div class="mw-fold"><span id="mwBase"></span></div>
+      </div>
+
+      <div class="mw-railfoot">
+        <button type="button" class="nb" id="mwReset">Reset view</button>
+        <button type="button" class="nb" id="mwOpenTable">Open as table</button>
+      </div>
+    </aside>
+
+    <div class="mw-mapcol">
+      <div class="mw-mapwrap">
+        <div id="mwMap"></div>
+        <div class="mw-busy" id="mwBusy" hidden>loading…</div>
+        <div class="mw-foot">
+          <span class="pill" id="mwScope">{{ home_name }}</span>
+          <span class="pill dash">boundaries derived from outlet demarkasi</span>
+        </div>
+      </div>
+
+      <!-- WHAT YOU CLICKED, IN FULL, UNDER THE MAP
+           The inspector on the right is the glance -- four tiles and a
+           list, always visible. This is the ledger: the desa a border
+           covers and by how much, and every outlet inside it. It is under
+           the map rather than beside it because the desa table is nine
+           columns wide and the rail is 300px. -->
+      <section class="mw-drawer" id="mwDrawer" hidden>
+        <div class="mw-dhead">
+          <span class="k" id="mwDKind">Area profile</span>
+          <b class="mw-dtitle" id="mwDTitle">—</b>
+          <span class="mw-note" id="mwDSub"></span>
+          <span class="mw-dgap"></span>
+          <span class="mw-dtabs" id="mwDTabs">
+            <button type="button" class="nb on" data-dtab="desa">Desa covered</button>
+            <button type="button" class="nb" data-dtab="outlets">Outlets</button>
+            <button type="button" class="nb" data-dtab="rebal">PJP review</button>
+          </span>
+          <button type="button" class="nb" id="mwDCsv">Export CSV</button>
+          <button type="button" class="nb" id="mwDClose">Close</button>
+        </div>
+
+        <div class="mw-stats mw-dstats" id="mwDStats"></div>
+
+        <div class="mw-dwrap" data-dpane="desa">
+          <div class="mw-dtr head">
+            <span>Desa / Kelurahan</span><span>Kecamatan</span><span>Microcluster</span>
+            <span class="n">Desa km²</span><span class="n">Covered km²</span>
+            <span class="n">% covered</span><span class="n">Outlets</span>
+            <span class="n">Sites</span><span class="n">People</span>
+          </div>
+          <div id="mwDDesa"></div>
+        </div>
+
+        <div class="mw-dwrap" data-dpane="outlets" hidden>
+          <div class="mw-dtr out head">
+            <span>Outlet</span><span>Name</span><span>DSE</span>
+            <span>Desa</span><span>Kecamatan</span><span>Category</span>
+            <span>Flag</span><span class="n">Latitude</span><span class="n">Longitude</span>
+          </div>
+          <div id="mwDOut"></div>
+        </div>
+
+        <div class="mw-dwrap" data-dpane="rebal" hidden>
+          <div class="mw-rebbar">
+            <span class="k">Review reps carrying more than</span>
+            <input type="range" id="mwRebN" min="20" max="150" step="5" value="50">
+            <b id="mwRebVal">50</b>
+            <span class="k">outlets</span>
+            <span class="mw-note">Acceptable gap to the rep&rsquo;s own nearest
+              outlet: <b>1.5&nbsp;km</b> urban &middot; <b>4&nbsp;km</b> rural.
+              Beyond it the outlet is flagged <b>out of boundaries</b>.</span>
+          </div>
+          <div class="mw-rebsum mw-note" id="mwRebSum"></div>
+          <div class="mw-dtr reb head">
+            <span>Outlet</span><span>Name</span><span>Desa</span>
+            <span>Area &middot; allowance</span>
+            <span class="n">Km to own</span><span>Flag</span>
+            <span>Recommend</span><span class="n">Km to new</span>
+            <span class="n">After move</span>
+          </div>
+          <div id="mwDReb"></div>
+        </div>
+
+        <div class="mw-note mw-dmsg" id="mwDMsg"></div>
+      </section>
+    </div>
+
+    <aside class="mw-insp">
+      <span class="k" id="mwIKind">Inspector</span>
+      <div class="mw-ititle" id="mwITitle">Nothing selected</div>
+      <div class="mw-isub" id="mwISub">Click a polygon or an outlet on the map.</div>
+      <div class="mw-stats" id="mwIStats"></div>
+      <div id="mwIList"></div>
+      <!-- Solid-bordered, because these figures are the application's own:
+           the size of the area, who lives in it, and the masts standing in
+           it. The dashed tiles above are your file. -->
+      <div id="mwCloud"></div>
+    </aside>
+  </div>
+
+  <!-- ══ DASHBOARD ════════════════════════════════════════════════════ -->
+  <div class="mw-view scroll" data-view="dashboard">
+    <div class="mw-sheet">
+      <div>
+        <span class="k">Branch {{ home_name }}</span>
+        <h1 class="mw-h1">{{ home_name }}</h1>
+      </div>
+
+      <div class="mw-5up">
+        <div class="cell"><span class="k">Kecamatan</span><b id="dbKec">—</b>
+          <span class="pill tag">cloud</span></div>
+        <div class="cell"><span class="k">Desa / Kelurahan</span><b id="dbDesa">—</b>
+          <span class="pill tag">cloud</span></div>
+        <div class="cell"><span class="k">Microclusters</span><b id="dbMc">—</b>
+          <span class="pill tag">cloud</span></div>
+        <div class="cell dash"><span class="k">Outlets</span><b id="dbOut">—</b>
+          <span class="pill dash tag">local</span></div>
+        <div class="cell dash"><span class="k">DSE</span><b id="dbDse">—</b>
+          <span class="mw-note" id="dbDseNote"></span>
+          <span class="pill dash tag">local</span></div>
+      </div>
+
+      <div class="cell red mw-alert" id="dbAlert">
+        <div>
+          <b style="font:700 13px/1.3 inherit">Local data not connected</b>
+          <div class="mw-note">The cloud holds the boundaries. The outlet and
+            site files stay on your desk — load them for this session to see
+            them on the map.</div>
+        </div>
+        <button type="button" class="nb on" data-goto="local">Connect local data</button>
+      </div>
+
+      <div class="mw-2up">
+        <div class="cell">
+          <span class="k">Outlets per kecamatan</span>
+          <div class="mw-bars" id="dbBars">
+            <div class="mw-note">Connect local data to see this.</div>
+          </div>
+        </div>
+        <div class="cell">
+          <span class="k">Coverage checks</span>
+          <div class="mw-list" id="dbChecks">
+            <div class="mw-note">Connect local data to see this.</div>
+          </div>
+          <div style="margin-top:12px">
+            <button type="button" class="nb on wide" data-goto="map">Open map workspace</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- IS ANY OUTLET ID CARRIED BY TWO DIFFERENT DSE?
+           Asked as one question and answered as four, because "32 outlet
+           IDs are under two DSE" and "32 outlets are double covered" are
+           not the same sentence, and only one of them is true of this
+           file. Each row opens the rows behind it in the table. -->
+      <div class="cell" id="dbDupeWrap">
+        <span class="k">Outlet identity check</span>
+        <div class="mw-dupetitle">Is any outlet ID carried by two different DSE?</div>
+        <div id="dbDupe">
+          <div class="mw-note">Connect local data to run this check.</div>
+        </div>
+      </div>
+
+      <!-- HOW MANY DESA IS ONE REP CARRYING?
+           The question behind the whole exercise. Every DSE in the loaded
+           file is counted by the number of distinct desa their outlets fall
+           in, then bucketed. Read down a column to find the reps holding
+           one desa; read across a row to see the shape of a branch. -->
+      <div class="cell" id="dbSlabWrap">
+        <div class="mw-slabhead">
+          <span class="k">DSE by desa covered</span>
+          <span class="mw-dgap"></span>
+          <span class="mw-lvl" id="dbBrand"></span>
+          <span class="mw-lvl" id="dbLevel">
+            <button type="button" class="nb on" data-lvl="circle">Jaya circle</button>
+            <button type="button" class="nb" data-lvl="region">Region</button>
+            <button type="button" class="nb" data-lvl="area">Area</button>
+            <button type="button" class="nb" data-lvl="branch">Branch</button>
+          </span>
+          <button type="button" class="nb" id="dbSlabCsv">Export CSV</button>
+        </div>
+        <div class="mw-mtxwrap"><div id="dbSlab"></div></div>
+        <div class="mw-note" id="dbSlabMsg" style="margin-top:10px"></div>
+        <div id="dbDrill"></div>
+      </div>
+
+      <div class="mw-note">
+        Cloud figures are served from this application's own database and are
+        the same for everybody. The two dashed tiles are read from your files
+        in this browser and are gone the moment you sign out.
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ DSE × OUTLET ═════════════════════════════════════════════════ -->
+  <div class="mw-view scroll" data-view="table">
+    <div class="mw-sheet">
+      <div class="mw-tbar">
+        <input class="inp grow" id="tbSearch" placeholder="Search outlet, desa, DSE"
+               autocomplete="off">
+        <select class="inp" id="tbDse" style="width:auto"><option value="">All DSE</option></select>
+        <span class="pill dash" id="tbCount">0 rows &middot; local file</span>
+        <button type="button" class="nb" id="tbShow">Show on map</button>
+        <button type="button" class="nb on" id="tbExport">Export CSV</button>
+      </div>
+      <div class="mw-tblwrap">
+        <div class="mw-tr head">
+          <span>Outlet</span><span>Name</span><span>Kecamatan</span>
+          <span>Desa</span><span>DSE</span><span>Microcluster</span><span>Flag</span>
+        </div>
+        <div id="tbBody"></div>
+      </div>
+      <div class="mw-note" id="tbFoot">No local file loaded.</div>
+    </div>
+  </div>
+
+  <!-- ══ LOCAL DATA ═══════════════════════════════════════════════════ -->
+  <div class="mw-view scroll" data-view="local">
+    <div class="mw-steps">
+      <div>
+        <span class="k">Session only</span>
+        <h1 class="mw-h1">Connect local data</h1>
+        <p class="mw-note">Nothing here is uploaded. The files are read by
+          this page, held in this browser's memory, drawn on the map, and
+          dropped when you sign out or close the tab. The server never sees
+          them and keeps no copy.</p>
+      </div>
+
+      <div class="cell dash">
+        <span class="k">Step 1 &middot; source</span>
+        <div class="mw-drop" id="ldDrop">
+          <div style="font:700 13px/1.3 inherit">Drop your files here</div>
+          <div class="mw-note" style="margin-top:6px">
+            Two files, either on its own or both together —<br>
+            <b>DSE &times; OUTLET mapping</b> &middot; .xlsx / .xls / .csv<br>
+            <b>SITE locations</b> &middot; SITE ID, Site Name, Long, Lat, Site Type
+          </div>
+          <div class="mw-btns">
+            <button type="button" class="nb on" id="ldPick">Pick files…</button>
+            <a class="nb" href="/polygon-samples" style="text-decoration:none">
+              Use the Polygon Samples page</a>
+          </div>
+          <input type="file" id="ldFile" multiple hidden
+                 accept=".xlsx,.xls,.csv,.txt">
+        </div>
+        <div class="mw-err" id="ldErr" hidden></div>
+      </div>
+
+      <div class="cell" id="ldStep2" hidden>
+        <span class="k">Step 2 &middot; column mapping</span>
+        <div class="mw-mapgrid" id="ldMap"></div>
+        <div class="mw-note" style="margin-top:10px" id="ldSheet"></div>
+      </div>
+
+      <!-- SITE LOCATIONS ARE LOCAL NOW.
+           They used to be served from the cloud. On a shared server they
+           are not published at all, so this slot is the only way a mast
+           reaches the map — which makes the column report below load
+           bearing rather than a nicety. -->
+      <div class="cell dash" id="ldSites" hidden>
+        <span class="k">Site locations &middot; local &middot; optional</span>
+        <div style="font:700 15px/1.3 inherit;margin-top:4px" id="ldSiteSum"></div>
+        <div class="mw-mapgrid" id="ldSiteMap" style="margin-top:10px"></div>
+        <div class="mw-note" style="margin-top:10px" id="ldSiteNote"></div>
+        <div class="mw-btns" style="justify-content:flex-start">
+          <button type="button" class="nb" data-goto="map">Show on the map</button>
+          <button type="button" class="nb dash" id="ldClearSites">Drop the site file</button>
+        </div>
+      </div>
+
+      <div class="cell red" id="ldStep3" hidden>
+        <span class="k">Step 3 &middot; loaded</span>
+        <div style="font:700 15px/1.3 inherit;margin-top:4px" id="ldSummary"></div>
+        <div class="hand" style="margin-top:6px">held in browser memory &middot; cleared on sign-out</div>
+        <div class="mw-btns" style="justify-content:flex-start">
+          <button type="button" class="nb on" data-goto="map">Open in map</button>
+          <button type="button" class="nb" data-goto="table">Open as table</button>
+          <button type="button" class="nb dash" id="ldClear">Clear local data</button>
+        </div>
+      </div>
+
+      <div class="cell">
+        <span class="k">Where each thing lives</span>
+        <div class="mw-list">
+          <div class="mw-row"><span>Desa / Kelurahan, Kecamatan, Kota / Kabupaten,
+            Indosat microcluster</span><span>cloud</span></div>
+          <div class="mw-row"><span>Masts per desa, as a reference figure</span>
+            <span>cloud</span></div>
+          <div class="mw-row"><span>DSE &times; outlet mapping</span>
+            <span>local &middot; this session</span></div>
+          <div class="mw-row"><span>Site locations &mdash; ID, name, type, coordinates</span>
+            <span>local &middot; this session</span></div>
+          <div class="mw-row"><span>Joined on</span>
+            <span>desa + kecamatan name</span></div>
+          <div class="mw-row"><span>Kept after sign-out</span><span>nothing</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  window.TERRCFG = { lat: {{ lat }}, lon: {{ lon }},
+                     home: {{ home_name|tojson }},
+                     basemap: {{ basemap|tojson }} };
+</script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Same CDN Leaflet comes from, so it is not a new dependency to reach:
+     if this is unreachable there is no map to draw on either. -->
+<script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.mini.min.js"></script>
+<script src="{{ url_for('static', filename='js/basemap.js') }}"></script>
+<script src="{{ url_for('static', filename='js/map_workspace.js') }}"></script>
+</body>
+</html>

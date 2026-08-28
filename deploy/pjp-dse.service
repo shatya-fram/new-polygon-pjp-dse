@@ -1,0 +1,35 @@
+# systemd unit — /etc/systemd/system/pjp-dse.service
+#
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now pjp-dse
+#   sudo journalctl -u pjp-dse -f
+[Unit]
+Description=NEW POLYGON PJP DSE
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pjp
+Group=pjp
+WorkingDirectory=/srv/pjp-dse
+EnvironmentFile=/srv/pjp-dse/.env
+ExecStart=/srv/pjp-dse/.venv/bin/gunicorn -c deploy/gunicorn.conf.py app:app
+Restart=on-failure
+RestartSec=5
+
+# The application reads a database and writes only its own cache directory.
+# Nothing else on the box needs to be reachable from it.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/pjp-dse/data
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryMax=2G
+
+[Install]
+WantedBy=multi-user.target

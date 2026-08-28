@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}NEW POLYGON PJP DSE{% endblock %}</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <strong>NEW POLYGON PJP DSE</strong>
+      <span class="sub">three connections &middot; one local database</span>
+    </div>
+    <nav class="mainnav">
+      {% for m in menus %}
+      <a class="{{ 'on' if m.key == active_menu else '' }}" href="{{ m.path }}"
+         title="{{ m.blurb }}">{{ m.label }}</a>
+      {% endfor %}
+    </nav>
+    <button type="button" class="mapbtn" id="mapMax" title="Hide the side and bottom panels and give the whole window to the map">Expand map</button>
+    <div class="status">
+      <span class="pill {{ 'ok' if google_ready else 'off' }}"
+            title="{{ 'GOOGLE_API_KEY is set' if google_ready else 'No GOOGLE_API_KEY in .env — Google source disabled' }}">
+        Google {{ 'ready' if google_ready else 'no key' }}
+      </span>
+      <span class="pill ok" title="Overture release used by pull_overture.py">
+        Overture {{ overture_release }}
+      </span>
+      <span class="pill {{ 'ok' if db_ready else 'off' }}" title="{{ 'Local SQLite database' if db_ready else 'No database yet — run migrate.py' }}">
+        {{ db_name if db_ready else 'no database' }}
+      </span>
+    </div>
+  </header>
+
+  {% block content %}{% endblock %}
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

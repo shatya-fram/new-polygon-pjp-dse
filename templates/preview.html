@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ page_title }} — NEW POLYGON PJP DSE</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/territory.css') }}">
+<script>
+  /* Before the first paint, not after. Left to the deferred theme script at
+     the end of the body, a light-mode reader would see the whole page render
+     dark and then flip — the flash that makes a theme toggle feel broken.
+     Nine lines here buy a correct first paint; the button, the persistence
+     and the basemap swap all live in js/theme.js. */
+  (function () {
+    try {
+      var s = localStorage.getItem("apl.theme");
+      var m = (s === "dark" || s === "light") ? s
+        : (window.matchMedia
+           && window.matchMedia("(prefers-color-scheme: light)").matches
+           ? "light" : "dark");
+      document.documentElement.setAttribute("data-boot-theme", m);
+    } catch (e) { /* private window — the default dark stands */ }
+  })();
+</script>
+</head>
+<body class="terr preview">
+
+{% include "_nav.html" %}
+
+<div class="pv-wrap">
+
+  <div class="pv-head">
+    <div class="pv-crumb" id="crumb"></div>
+    <div class="pv-levels" id="levels"></div>
+    <!-- Separated from the level pills on purpose. Butted up against them it
+         read as a sixth level rather than as an action on the whole view. -->
+    <span class="pv-sep" aria-hidden="true"></span>
+    <button type="button" id="pvClear" class="rtab"
+            title="Back to the opening view: whole region, Exclusive at 400 m, outlets and sites shown">Clear</button>
+    <button type="button" id="themeBtn" class="rtab" aria-pressed="false"
+            title="Theme">Theme: auto</button>
+    <button type="button" id="pvCsv" class="rtab">Download CSV</button>
+  </div>
+
+  <div class="cfgbar" id="cfgbar"></div>
+  <div class="pv-cover" id="coverage"></div>
+
+  <section class="pv-terr" id="pvTerr">
+    <div class="pv-terr-head">
+      <h2>Territory preview <span id="pvTerrWhere" class="muted"></span></h2>
+      <div class="segmented" id="pvModes" role="radiogroup" aria-label="Territory model">
+        <button type="button" data-mode="exclusive" class="on" role="radio"
+                aria-checked="true">Exclusive<small>no overlap</small></button>
+        <button type="button" data-mode="coverage" role="radio"
+                aria-checked="false">Coverage<small>overlaps</small></button>
+        <button type="button" data-mode="forcefit" role="radio"
+                aria-checked="false">Force fit<small>whole desa</small></button>
+      </div>
+      <label class="pv-reach">Reach <b id="pvReachVal">400 m</b>
+        <input type="range" id="pvReach" min="150" max="1200" step="50" value="400"></label>
+      <!-- Two groups, tagged. Unlabelled, six checkboxes in a row read as one
+           undifferentiated list; these turn on different KINDS of thing —
+           dots you count, outlines you read against. -->
+      <span class="pv-dots"><b class="pv-tag">Points</b>
+        <label class="checkline"><input type="checkbox" id="pvKindOutlet" checked> Outlets</label>
+        <label class="checkline"><input type="checkbox" id="pvKindSite" checked> Sites</label>
+        <label class="checkline"><input type="checkbox" id="pvKindPoi"> POI</label>
+      </span>
+      <!-- Boundary outlines. Multi-select on purpose: desa inside kecamatan
+           inside microcluster is a nesting you often want to see all of at
+           once, and one-at-a-time would hide the mismatches worth finding.
+           All three start off — they are context for the territory model,
+           not the subject, so nothing is drawn until asked for. -->
+      <span class="pv-dots pv-bounds"><b class="pv-tag">Borders</b>
+        <label class="checkline"><input type="checkbox" id="pvBndDesa">
+          <i style="border-top-color:#6EC46E"></i>Desa</label>
+        <label class="checkline"><input type="checkbox" id="pvBndKec">
+          <i style="border-top-color:#35D0E0"></i>Kecamatan</label>
+        <label class="checkline"><input type="checkbox" id="pvBndMc">
+          <i style="border-top-color:#B388FF;border-top-style:dashed"></i>Indosat MC</label>
+      </span>
+      <button type="button" id="pvTerrDraw" class="rtab on">Draw</button>
+      <button type="button" id="pvTerrHide" class="rtab">Hide</button>
+    </div>
+    <!-- The map and the roster share a box, so opening a microcluster does
+         not push the map off screen. The panel is empty and hidden until a
+         microcluster is actually clicked. -->
+    <div class="pv-mapwrap">
+      <div id="pvMap" class="pv-map"></div>
+      <aside class="pv-mc" id="pvMc" hidden aria-label="Microcluster roster"></aside>
+    </div>
+    <div class="pv-legend" id="pvLegend" hidden></div>
+    <!-- Which desa the map is currently showing, with a way out. Without
+         this, a zoomed-in map is a place you have arrived at with no label
+         and no obvious way back. -->
+    <div class="pv-focus" id="pvFocus" hidden></div>
+    <div class="pv-bndnote" id="pvBndNote"></div>
+    <div class="pv-terr-foot">
+      <div class="readout" id="pvReadout">
+        <div><b id="pvPolys">—</b><span>DSE drawn</span></div>
+        <div><b id="pvOutlets">—</b><span>outlets</span></div>
+        <div><b id="pvArea">—</b><span>km² total</span></div>
+        <div><b id="pvOverlap">—</b><span>overlap</span></div>
+      </div>
+      <p class="hint" id="pvTerrMsg">The model reads every uploaded outlet
+        export at once — nothing to tick, nothing to upload. Pick a level or a
+        row above and the polygons follow the selection.</p>
+    </div>
+  </section>
+
+  <div class="pv-cards" id="cards"></div>
+
+  <div class="pv-tablewrap">
+    <table class="rank pv-table" id="tbl">
+      <thead><tr id="thead"></tr></thead>
+      <tbody id="tbody"><tr><td class="muted small">loading…</td></tr></tbody>
+      <tfoot id="tfoot"></tfoot>
+    </table>
+  </div>
+
+  <p class="hint pv-note">
+    Counts add up the hierarchy; the per-DSE ratios are recomputed from the
+    totals rather than averaged, because an average of averages would weight a
+    one-DSE microcluster the same as a ten-DSE one. Market share is weighted
+    by subscribers for the same reason. <b>DSE</b> counts distinct people, so
+    one working two branches is counted once in the total.
+  </p>
+</div>
+
+<script>
+  window.TERR = { levels: {{ levels | tojson }} };
+</script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+<script src="{{ url_for('static', filename='js/preview.js') }}"></script>
+<script src="{{ url_for('static', filename='js/preview_territory.js') }}"></script>
+</body>
+</html>

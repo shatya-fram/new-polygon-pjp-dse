@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ page_title }} — NEW POLYGON PJP DSE</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/territory.css') }}">
+<script>
+  /* Before the first paint, not after — same reason as every other page. */
+  (function () {
+    try {
+      var s = localStorage.getItem("apl.theme");
+      var m = (s === "dark" || s === "light") ? s
+        : (window.matchMedia
+           && window.matchMedia("(prefers-color-scheme: light)").matches
+           ? "light" : "dark");
+      document.documentElement.setAttribute("data-boot-theme", m);
+    } catch (e) { /* private window — the default dark stands */ }
+  })();
+</script>
+</head>
+<body class="terr preview">
+
+{% include "_nav.html" %}
+
+<div class="pv-wrap">
+
+  <div class="pv-head">
+    <div class="pv-crumb"><b>Polygon sample exercise</b></div>
+    <span class="pv-sep" aria-hidden="true"></span>
+    <button type="button" id="themeBtn" class="rtab" aria-pressed="false"
+            title="Theme">Theme: auto</button>
+  </div>
+
+  <p class="hint pv-note" style="margin-top:0">
+    A working area for trying a demarcation against the territory the
+    application already knows. The four base layers below are the fixed
+    reference; your own DSE&nbsp;→&nbsp;outlet workbook draws on top of them.
+    <b>The workbook is read in your browser and never uploaded</b> — this page
+    works the same way on a shared server as it does here.
+  </p>
+
+  <section class="pv-terr" id="pvTerr">
+    <div class="pv-terr-head">
+      <h2>Base layers <span class="muted">the fixed reference</span></h2>
+      <!-- All four on by default: this page is about reading a proposal
+           against the territory, and the territory is not optional context
+           here the way it is on the Preview page. -->
+      <span class="pv-dots pv-bounds"><b class="pv-tag">Show</b>
+        <label class="checkline"><input type="checkbox" id="bsMc" checked>
+          <i style="border-top-color:#B388FF;border-top-style:dashed"></i>Indosat territory</label>
+        <label class="checkline"><input type="checkbox" id="bsKabkot" checked>
+          <i style="border-top-color:#F2994A"></i>Kota / Kabupaten</label>
+        <label class="checkline"><input type="checkbox" id="bsKec" checked>
+          <i style="border-top-color:#35D0E0"></i>Kecamatan</label>
+        <label class="checkline"><input type="checkbox" id="bsDesa" checked>
+          <i style="border-top-color:#6EC46E"></i>Desa / Kelurahan</label>
+        <!-- Sites are points, not an outline, so they are the one base
+             layer that is off until asked for: 15,919 dots over a
+             demarcation you are trying to read is noise until it is the
+             question. -->
+        <label class="checkline"><input type="checkbox" id="bsSites">
+          <i class="dot" style="background:#F2C94C"></i>Site locations</label>
+      </span>
+      <label class="pv-target"><span class="pv-tag">Profile on click</span>
+        <select id="pvTarget">
+          <option value="auto">Auto — whatever is on top</option>
+          <option value="model">DSE territory polygon</option>
+          <option value="kelurahan">Desa / Kelurahan</option>
+          <option value="kecamatan">Kecamatan</option>
+          <option value="indosat_mc">Indosat territory</option>
+          <option value="kabkot">Kota / Kabupaten</option>
+        </select></label>
+      <label class="pv-target"><span class="pv-tag">Basemap</span>
+        <span id="pvBase"></span></label>
+      <button type="button" id="bsHome" class="rtab">Reset view</button>
+    </div>
+
+    <!-- YOUR OWN FILE, OVER OURS
+         Read in the browser and drawn from there. A 2.5 MB demarcation
+         export is on the map in a fraction of a second because there is no
+         upload at all, and on a shared host nobody's working file leaves
+         their machine to be looked at. -->
+    <section class="smp" id="smpPanel">
+      <div class="smp-head">
+        <b class="pv-tag">Your sample file</b>
+        <span class="muted">DSE → outlet workbook, drawn over the base
+          layers. It stays in your browser.</span>
+      </div>
+      <div class="smp-body">
+        <div class="smp-drop" id="smpDrop">
+          <b>Drop a DSE → outlet workbook</b>
+          <span>.xlsx — or click to browse</span>
+          <input type="file" id="smpFile" accept=".xlsx,.xlsm" hidden>
+        </div>
+        <div class="smp-who">
+          <label>Your name<input type="text" id="smpUser"
+                 placeholder="who is previewing this"></label>
+          <label>Branch<input type="text" id="smpBranch"
+                 placeholder="e.g. WEST JAKARTA"></label>
+          <label>Region<input type="text" id="smpRegion"
+                 placeholder="e.g. INNER JAKARTA"></label>
+          <label>Label <span class="muted">(optional)</span>
+                 <input type="text" id="smpLabel"
+                 placeholder="what this demarcation is"></label>
+          <!-- Keeping a sample publishes it to everyone who opens this page,
+               so it is a separate button and only appears where the server
+               says it will accept one. -->
+          <button type="button" id="smpKeep" class="rtab" hidden
+                  data-can="0">Keep on this server</button>
+        </div>
+      </div>
+      <div class="smp-msg" id="smpMsg"></div>
+
+      <!-- THE SAME THREE DEFINITIONS THE REST OF THE APPLICATION USES
+           Exclusive, Coverage and Force fit are the application's own
+           answers to "what is this rep's patch". They are computed on the
+           server from (DSE, lat, lon) alone and nothing is kept -- writing a
+           second implementation in the browser would be a second answer that
+           could disagree with the first. -->
+      <div class="smp-model" id="smpModel" hidden>
+        <b class="pv-tag">Territory from this sample</b>
+        <div class="segmented" id="smpModes" role="radiogroup"
+             aria-label="Territory model">
+          <button type="button" data-mode="exclusive" class="on" role="radio"
+                  aria-checked="true">Exclusive<small>no overlap</small></button>
+          <button type="button" data-mode="coverage" role="radio"
+                  aria-checked="false">Coverage<small>overlaps</small></button>
+          <button type="button" data-mode="forcefit" role="radio"
+                  aria-checked="false">Force fit<small>whole desa</small></button>
+        </div>
+        <label class="pv-reach">Reach <b id="smpReachVal">400 m</b>
+          <input type="range" id="smpReach" min="150" max="1200" step="50"
+                 value="400"></label>
+        <button type="button" id="smpBuild" class="rtab on">Build</button>
+        <button type="button" id="smpModelOff" class="rtab">Hide</button>
+        <label class="checkline"><input type="checkbox" id="smpDots" checked>
+          Outlet dots</label>
+      </div>
+      <div class="smp-msg" id="smpModelMsg"></div>
+      <div class="smp-readout readout" id="smpReadout" hidden>
+        <div><b id="smpRoDse">—</b><span>DSE drawn</span></div>
+        <div><b id="smpRoOut">—</b><span>outlets</span></div>
+        <div><b id="smpRoDesa">—</b><span>desa</span></div>
+        <div><b id="smpRoSites">—</b><span>sites</span></div>
+        <div><b id="smpRoArea">—</b><span>km² total</span></div>
+        <div><b id="smpRoOver">—</b><span>overlap</span></div>
+      </div>
+      <div class="smp-kept" id="smpKept" hidden></div>
+      <div class="smp-legend" id="smpLegend" hidden></div>
+    </section>
+
+    <div id="pvMap" class="pv-map"></div>
+    <div class="pv-bndnote" id="bsNote"></div>
+
+    <!-- WHAT YOU CLICKED, IN FULL, UNDER THE MAP
+         The map answers "where"; this answers "what is in it". It sits
+         below rather than in a popup because the desa breakdown is a table
+         with six columns and a popup that size covers the thing it is
+         describing. Hover still gives the one-line version on the map. -->
+    <section class="smp-detail" id="smpDetail" hidden>
+      <div class="smp-dhead">
+        <b class="pv-tag" id="smpDKind">Area profile</b>
+        <b class="smp-dtitle" id="smpDTitle">—</b>
+        <span class="muted" id="smpDSub"></span>
+        <span class="smp-dgap"></span>
+        <button type="button" id="smpDCsv" class="rtab">Export CSV</button>
+        <button type="button" id="smpDClose" class="rtab">Close</button>
+      </div>
+
+      <div class="smp-readout readout" id="smpDStats"></div>
+
+      <div class="smp-dtabs" id="smpDTabs">
+        <button type="button" class="rtab on" data-dtab="desa">Desa covered</button>
+        <button type="button" class="rtab" data-dtab="outlets">Outlets</button>
+      </div>
+
+      <div class="smp-dwrap" data-dpane="desa">
+        <table class="smp-dtable">
+          <thead><tr>
+            <th>Desa / Kelurahan</th><th>Kecamatan</th><th>Microcluster</th>
+            <th class="n">Desa km&sup2;</th><th class="n">Covered km&sup2;</th>
+            <th class="n">% covered</th><th class="n">Outlets</th>
+            <th class="n">Sites</th><th class="n">Population</th>
+          </tr></thead>
+          <tbody id="smpDDesa"></tbody>
+        </table>
+      </div>
+
+      <div class="smp-dwrap" data-dpane="outlets" hidden>
+        <table class="smp-dtable">
+          <thead><tr>
+            <th>Outlet code</th><th>Outlet</th><th>DSE</th>
+            <th>Desa</th><th>Kecamatan</th><th>Category</th>
+            <th>Remarks</th><th class="n">Latitude</th><th class="n">Longitude</th>
+          </tr></thead>
+          <tbody id="smpDOut"></tbody>
+        </table>
+      </div>
+
+      <div class="smp-msg" id="smpDMsg"></div>
+    </section>
+  </section>
+
+  <p class="hint pv-note">
+    The columns a workbook needs are a <b>DSE code</b>, a <b>longitude</b> and
+    a <b>latitude</b>; <code>DSE CODE</code> or <code>UNIKDSE</code>,
+    <code>LONG</code> or <code>LONGITUDE</code>, <code>LAT</code> or
+    <code>LATITUDE</code> are all accepted. Every sheet is tried and the one
+    carrying those three wins, so a workbook with Summary and Maps tabs does
+    not need cleaning up first. Rows without a DSE code, without coordinates,
+    or outside {{ home_name }} are counted and named rather than dropped in
+    silence.
+  </p>
+</div>
+
+<script>
+  window.TERRCFG = { lat: {{ lat }}, lon: {{ lon }},
+                     basemap: {{ basemap|tojson }} };
+</script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+<script src="{{ url_for('static', filename='js/basemap.js') }}"></script>
+<script src="{{ url_for('static', filename='js/polygon_samples.js') }}"></script>
+<!-- Same CDN the map itself comes from, so it is not a new dependency: if
+     this is unreachable Leaflet is too and there is no map to draw on. -->
+<script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.mini.min.js"></script>
+<script src="{{ url_for('static', filename='js/sample_layer.js') }}"></script>
+</body>
+</html>

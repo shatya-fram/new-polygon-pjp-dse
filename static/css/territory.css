@@ -1,0 +1,1009 @@
+/* Territory overlay page. Dark, because it sits over a dark basemap and
+   the operator colours have to stay legible against it. */
+body.terr { margin: 0; height: 100vh; display: flex; flex-direction: column;
+            overflow: hidden; }
+.terr-top { display: flex; align-items: baseline; gap: 16px; padding: 10px 18px;
+            border-bottom: 1px solid var(--line, var(--line-2)); flex: 0 0 auto; }
+.terr-top h1 { font-size: 15px; margin: 0; font-weight: 600; }
+.terr-top .back { font-size: 13px; text-decoration: none; color: var(--muted); }
+.terr-top .back:hover { color: var(--text-2); }
+
+.terr-wrap { flex: 1 1 auto; display: grid; grid-template-columns: 292px 1fr;
+             min-height: 0; }
+.terr-side { border-right: 1px solid var(--line, var(--line-2)); padding: 14px;
+  display: flex; flex-direction: column;
+             overflow-y: auto; min-height: 0; }
+.terr-side h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+                color: var(--muted); margin: 0 0 8px; }
+.terr-side section { margin-bottom: 22px; }
+.terr-side select { width: 100%; margin-bottom: 6px; }
+
+.terr-main { display: grid; grid-template-rows: auto 1fr 190px; min-height: 0;
+             min-width: 0; }
+#map { min-height: 0; width: 100%; background: var(--map-bg); }
+.terr-panel { border-top: 1px solid var(--line, var(--line-2)); overflow-y: auto;
+              min-height: 0; padding: 12px 16px; }
+.panel-empty { padding: 28px 8px; text-align: center; font-size: 13px; }
+
+.layer-list label { display: flex; align-items: center; gap: 8px;
+                    font-size: 13px; padding: 4px 0; cursor: pointer; }
+.layer-list .swatch { width: 22px; height: 0; border-top-width: 3px;
+                      border-top-style: solid; flex: 0 0 auto; }
+.layer-list .dot, .share-row .dot, .sp-tally .dot { display: inline-block;
+                   width: 11px; height: 11px; border-radius: 50%;
+                   flex: 0 0 auto; border: 1px solid rgba(0,0,0,.5); }
+.layer-list .cnt { margin-left: auto; color: var(--muted-2); font-size: 11px; }
+
+/* performance panel */
+.hit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 14px; }
+.hit { border: 1px solid var(--line, var(--line-2)); border-radius: 8px; padding: 10px 12px;
+       border-left-width: 4px; }
+.hit h3 { margin: 0; font-size: 14px; }
+.hit .sub { color: var(--muted); font-size: 11px; margin-bottom: 8px; }
+.hit table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.hit td { padding: 2px 0; }
+.hit td.v { text-align: right; font-variant-numeric: tabular-nums; }
+.hit td.p { color: var(--muted-2); font-size: 10px; text-align: right; width: 60px; }
+.shares { margin-top: 8px; }
+.share-bar { display: flex; height: 9px; border-radius: 4px; overflow: hidden;
+             margin-bottom: 5px; background: var(--panel-3); }
+.share-row { display: flex; align-items: center; gap: 6px; font-size: 11px;
+             padding: 1px 0; }
+.share-row .k { flex: 1 1 auto; }
+.share-row .v { font-variant-numeric: tabular-nums; }
+.derived { color: var(--gold-2); font-size: 10px; margin-top: 6px; }
+.sp-tally { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.sp-tally span { font-size: 11px; display: flex; align-items: center; gap: 4px; }
+
+.legend { position: absolute; right: 14px; bottom: 268px; z-index: 800;
+          background: rgba(14,17,24,.93); border: 1px solid var(--line-2);
+          border-radius: 8px; padding: 9px 11px; font-size: 11px;
+          max-width: 210px; display: none; }
+.legend.on { display: block; }
+.legend h4 { margin: 0 0 6px; font-size: 10px; text-transform: uppercase;
+             letter-spacing: .07em; color: var(--muted); }
+.legend .row { display: flex; align-items: center; gap: 7px; padding: 1.5px 0; }
+.small-btn { font-size: 12px; padding: 5px 10px; }
+.leaflet-tooltip.terr-tip { background: var(--tip-bg); border: 1px solid var(--line-3);
+                            color: var(--text-2); font-size: 11.5px; }
+.leaflet-tooltip.terr-tip strong { color: var(--text-hi); }
+
+/* ── shared nav ─────────────────────────────────────────────────────── */
+.terr-top { gap: 22px; }
+.brandmark { font-size: 13px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; }
+.mainnav { display: flex; gap: 4px; flex: 1 1 auto; }
+.navitem {
+  font-size: 13px; text-decoration: none; color: var(--muted);
+  padding: 5px 12px; border-radius: 6px; white-space: nowrap;
+  border: 1px solid transparent;
+}
+.navitem:hover { color: var(--text-hi); background: var(--wash-2); }
+.navitem.on { color: var(--text-hi); background: var(--wash-4); border-color: var(--line-3); }
+
+.fieldlabel {
+  display: block; font-size: 11px; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--muted); margin: 12px 0 4px;
+}
+.terr-side .actions { display: flex; gap: 8px; margin-top: 12px; }
+
+/* ── insight counters ───────────────────────────────────────────────── */
+.terr-main.has-insights { grid-template-rows: auto 1fr auto 170px; }
+.insights { border-top: 1px solid var(--line, var(--line-2)); padding: 10px 16px 12px; }
+.insights-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+.insights-head h3 { margin: 0; font-size: 13px; font-weight: 600; }
+.counters { display: flex; flex-wrap: wrap; gap: 8px; }
+.counter {
+  border: 1px solid var(--line, var(--line-2)); border-radius: 7px;
+  padding: 7px 12px; background: var(--wash-1);
+  cursor: pointer; min-width: 104px; text-align: left;
+  color: inherit; font: inherit;
+}
+.counter:hover { border-color: var(--line-4); background: var(--wash-3); }
+.counter .n { display: block; font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.counter .l { display: block; font-size: 11px; color: var(--muted); }
+.counter.na { opacity: .45; cursor: not-allowed; }
+.counter.na .n { font-size: 12px; font-weight: 400; color: var(--muted); }
+
+/* ── modal ──────────────────────────────────────────────────────────── */
+.modal {
+  position: fixed; inset: 0; z-index: 2000; display: flex;
+  align-items: center; justify-content: center;
+  background: var(--scrim); padding: 24px;
+}
+.modal[hidden] { display: none !important; }
+.modal-card {
+  background: var(--card); border: 1px solid var(--line-3); border-radius: 10px;
+  width: min(1000px, 100%); max-height: 84vh; display: flex; flex-direction: column;
+}
+.modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; border-bottom: 1px solid var(--line-2);
+}
+.modal-head h3 { margin: 0; font-size: 15px; }
+.modal-body { overflow: auto; padding: 0; }
+.modal-body table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.modal-body th {
+  position: sticky; top: 0; background: var(--thead); text-align: left;
+  padding: 9px 14px; font-size: 10.5px; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--muted); border-bottom: 1px solid var(--line-2);
+}
+.modal-body td { padding: 8px 14px; border-bottom: 1px solid var(--line-1); }
+.modal-body tr:hover td { background: var(--wash-2); }
+.modal-body .rowlink { cursor: pointer; }
+
+/* ── upload panel (Distribution) ────────────────────────────────────── */
+.drop {
+  border: 1.5px dashed var(--line-4); border-radius: 8px; padding: 18px 14px;
+  text-align: center; font-size: 12.5px; color: var(--muted); cursor: pointer;
+  background: var(--wash-1);
+}
+.drop.hot { border-color: var(--good-3); color: var(--good-2); background: rgba(110,196,110,.07); }
+.drop strong { color: var(--text-hi); display: block; margin-bottom: 3px; font-size: 13px; }
+.uplist { display: grid; gap: 7px; margin-top: 12px; }
+.uprow {
+  border: 1px solid var(--line, var(--line-2)); border-radius: 6px; padding: 8px 11px;
+  font-size: 12.5px;
+}
+.uprow .top { display: flex; align-items: center; gap: 8px; }
+.uprow .nm { font-weight: 500; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.uprow .cnt { color: var(--muted-2); font-size: 11px; font-variant-numeric: tabular-nums; }
+.uprow .meta { color: var(--muted-2); font-size: 11px; margin-top: 2px; }
+
+/* ── style controls in the catalogue ────────────────────────────────── */
+.stylebox { margin-top: 14px; }
+.swatches { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 4px; }
+.sw {
+  background: transparent; border: 1px solid var(--line-3); border-radius: 5px;
+  padding: 4px; cursor: pointer; line-height: 0;
+}
+.sw:hover { border-color: var(--line-4); }
+.sw.on { border-color: var(--muted); background: var(--wash-4); }
+.swtch { vertical-align: middle; margin-right: 6px; }
+.range { width: 100%; accent-color: var(--overture); }
+
+/* ── legend docked under the map ────────────────────────────────────── */
+.maplegend {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px;
+  padding: 8px 16px; border-top: 1px solid var(--line, var(--line-2));
+  background: var(--wash-1); font-size: 12px; min-height: 34px;
+}
+.lgtitle {
+  font-size: 10px; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--muted-2); margin-right: 2px;
+}
+.maplegend .lg { display: inline-flex; align-items: center; white-space: nowrap; color: var(--text-2); }
+.maplegend .lg b { color: var(--muted); font-weight: 500; margin-left: 5px; }
+.maplegend .ln { display: inline-block; width: 18px; margin-right: 7px; }
+.poi-mk { background: none; border: none; }
+.terr-main { grid-template-rows: auto 1fr auto 190px; }
+.terr-main.has-insights { grid-template-rows: auto 1fr auto 220px; }
+
+/* ── operator logos ─────────────────────────────────────────────────── */
+.oplogo {
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%; border: 2px solid; background: #fff;
+  overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.55);
+  flex: 0 0 auto;
+}
+.oplogo img { width: 78%; height: 78%; object-fit: contain; display: block; }
+/* legend / sidebar size — the map markers set their own inline */
+.oplogo.lgl { width: 18px; height: 18px; border-width: 1.5px; margin-right: 7px; }
+.layer-list .oplogo.lgl { margin-right: 8px; }
+
+/* ── Future GAPURA ─────────────────────────────────────────────────────── */
+.paramgrid input[type="number"], .paramgrid input[type="text"],
+.terr-side input[type="text"], .terr-side input[type="file"] {
+  width: 100%; box-sizing: border-box; margin-bottom: 8px;
+  background: var(--card); border: 1px solid var(--line-3); border-radius: 6px;
+  color: var(--text-hi); padding: 5px 8px; font: inherit; font-size: 12.5px;
+}
+.check { display: flex; gap: 7px; align-items: flex-start; font-size: 11.5px;
+  color: var(--muted); line-height: 1.35; margin-top: 4px; }
+.check input { margin-top: 2px; flex: 0 0 auto; }
+/* ── Future GAPURA: configure-then-run workflow ─────────────────────── */
+.stepno {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 17px; height: 17px; margin-right: 7px; border-radius: 50%;
+  background: var(--wash-4); color: var(--text-2);
+  font-size: 10.5px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.wfstate {
+  margin-top: 10px; padding: 7px 10px; border-radius: 6px;
+  border: 1px solid var(--line-3); background: var(--card);
+  font-size: 11.5px; line-height: 1.4; color: var(--text-2);
+}
+.wfstate.clean  { border-color: var(--line-3); }
+.wfstate.dirty  { border-color: var(--gold); color: var(--text-hi); }
+.wfstate.pending { border-style: dashed; }
+.warn-hint {
+  border-left: 2px solid var(--gold); padding-left: 8px; margin-left: 1px;
+}
+#runModel:disabled { opacity: .45; cursor: default; }
+
+.gatebox { margin-top: 12px; display: grid; gap: 4px; }
+.gaterow { display: flex; gap: 8px; align-items: baseline; font-size: 11.5px;
+  color: var(--muted); }
+.gaterow .k { flex: 1 1 auto; }
+.gaterow .v { font-variant-numeric: tabular-nums; color: var(--text-2); }
+.gaterow.off { opacity: .5; }
+.gaterow.final .v { color: var(--gold); font-weight: 600; }
+.tabs { display: flex; gap: 4px; }
+.tabbtn { font-size: 11px; padding: 3px 9px; border-radius: 999px; cursor: pointer;
+  background: transparent; border: 1px solid var(--line-3); color: var(--muted); }
+.tabbtn.on { color: var(--text-hi); background: var(--wash-4); }
+.tabpane { max-height: 230px; overflow: auto; }
+table.rank { width: 100%; border-collapse: collapse; font-size: 12px; }
+table.rank th { position: sticky; top: 0; background: var(--card); text-align: left;
+  padding: 5px 8px; font-size: 10px; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted); border-bottom: 1px solid var(--line-2); }
+table.rank td { padding: 4px 8px; border-bottom: 1px solid var(--line-1);
+  white-space: nowrap; }
+table.rank td.n { text-align: right; font-variant-numeric: tabular-nums; }
+table.rank tr.pick { cursor: pointer; }
+table.rank tr.pick:hover td { background: var(--wash-2); }
+table.rank tr.gated td { opacity: .5; }
+.scorechip { display: inline-block; min-width: 42px; text-align: center;
+  border-radius: 4px; padding: 1px 5px; font-weight: 600; color: var(--sunk);
+  font-variant-numeric: tabular-nums; }
+.pchip { display: inline-block; border-radius: 3px; padding: 0 5px;
+  font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
+.pchip.urban { background: rgba(75,150,243,.18); color: var(--accent-ink); }
+.pchip.rural { background: rgba(110,196,110,.18); color: var(--good); }
+.gatetag { color: var(--rust); font-size: 11px; }
+.candmark { display: flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%; font-size: 10px;
+  font-weight: 700; color: var(--sunk); border: 2px solid var(--sunk);
+  box-shadow: 0 0 0 1px var(--wash-5); }
+.bd { display: grid; grid-template-columns: 1fr auto auto auto; gap: 2px 12px;
+  font-size: 12px; align-items: baseline; }
+.bd .hd { color: var(--muted); font-size: 10px; text-transform: uppercase;
+  letter-spacing: .06em; }
+.bd .n { text-align: right; font-variant-numeric: tabular-nums; }
+
+
+/* ── full-screen map ───────────────────────────────────────────────────
+   One control, shared by every page. The panels below the map are useful
+   but they are not what you look at while you are reading a territory, so
+   they fold away rather than competing for the same pixels. The state is
+   remembered per browser: someone who works map-first should not have to
+   press it on every page. */
+.mapbtn {
+  font-size: 11px; padding: 4px 10px; border-radius: 999px; cursor: pointer;
+  background: transparent; border: 1px solid var(--line-3); color: var(--muted);
+  white-space: nowrap; margin-left: auto;
+}
+.mapbtn:hover { color: var(--text-hi); background: var(--wash-3); }
+.mapbtn.on { color: var(--on-gold); background: var(--gold-fill);
+  border-color: var(--gold-fill); }
+
+body.mapmax .terr-wrap { grid-template-columns: 1fr; }
+body.mapmax .terr-side { display: none; }
+body.mapmax .terr-panel,
+body.mapmax .insights { display: none; }
+body.mapmax .terr-main,
+body.mapmax .terr-main.has-insights { grid-template-rows: auto 1fr auto; }
+body.mapmax .layout { grid-template-columns: 1fr; }
+body.mapmax .layout > .panel,
+body.mapmax .main > .results { display: none; }
+body.mapmax .main { grid-template-rows: 1fr; }
+.dlbtn { display: inline-block; text-decoration: none; text-align: center;
+  flex: 1 1 auto; }
+
+/* A deferred boundary (desa: 887 polygons) is fetched on first tick; the
+   label dims while its geometry is in flight so the pause reads as loading
+   rather than as a checkbox that did nothing. */
+.layer-list label.loading { opacity: .55; }
+.layer-list label.loading .cnt::after { content: " …"; }
+
+/* DSE servicing coverage (Distribution page only). Thin strokes and a barely
+   there fill: 29 overlapping inferred polygons stacked on a basemap turn into
+   mud at any real fill opacity, and the outline is the information. */
+.dse-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 12px; }
+.dse-row .sw { width: 14px; height: 0; border-top: 2.5px solid; flex: none; }
+.dse-row .nm { font-family: ui-monospace, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dse-row .cnt { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dse-row.dim { opacity: .35; }
+#dseReach { width: 100%; }
+.dse-row { cursor: pointer; }
+.dse-row:hover { background: var(--wash-2); }
+.dse-row.active .nm { font-weight: 700; }
+
+/* ── Territory model panel (Distribution page only) ───────────────────── */
+.segmented { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px;
+  background: var(--line-2); border: 1px solid var(--line-3); border-radius: 4px;
+  padding: 2px; margin-bottom: 8px; }
+.segmented button { appearance: none; border: 0; border-radius: 3px;
+  background: transparent; color: var(--muted); font: inherit; font-size: 12px;
+  font-weight: 600; padding: 7px 4px; cursor: pointer; line-height: 1.2;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.segmented button small { font-size: 9.5px; font-weight: 400; opacity: .75;
+  letter-spacing: .02em; }
+.segmented button:hover { color: var(--text-2); background: var(--wash-2); }
+.segmented button.on { background: var(--pick-fill); color: var(--on-pick); }
+.segmented button.on small { opacity: .8; }
+
+.readout { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+  background: var(--line-3); border: 1px solid var(--line-3); border-radius: 4px;
+  overflow: hidden; margin-bottom: 10px; }
+.readout div { background: var(--inset); padding: 7px 6px; text-align: center; }
+.readout b { display: block; font-size: 14px; font-variant-numeric: tabular-nums;
+  color: var(--text-hi); }
+.readout span { display: block; font-size: 9px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--muted); margin-top: 1px; }
+
+details.cfg { border: 1px solid var(--line-3); border-radius: 4px; padding: 0 10px 10px;
+  margin-bottom: 10px; }
+details.cfg > summary { cursor: pointer; font-size: 11px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted); padding: 9px 0; font-weight: 600; }
+details.cfg[open] > summary { border-bottom: 1px solid var(--line-2); margin-bottom: 8px; }
+.hint.tight { margin: 3px 0 10px; font-size: 11px; line-height: 1.45; }
+.checkline { display: flex; align-items: center; gap: 7px; font-size: 12px;
+  color: var(--text-3); margin-top: 10px; cursor: pointer; }
+.derived-only.off { opacity: .35; pointer-events: none; }
+#dseModeNote { margin-bottom: 10px; }
+
+/* ── sidebar: tabs, scroll body, pinned action ─────────────────────────── */
+.terr-side { padding: 0; overflow: hidden; }
+.side-tabs {
+  display: flex; flex-wrap: wrap; gap: 2px; padding: 8px 8px 0;
+  border-bottom: 1px solid var(--line, var(--line-2)); flex: 0 0 auto;
+}
+.sidetab {
+  font-size: 11px; padding: 6px 10px; cursor: pointer; color: var(--muted);
+  background: transparent; border: 1px solid transparent;
+  border-bottom: none; border-radius: 6px 6px 0 0; margin-bottom: -1px;
+  white-space: nowrap;
+}
+.sidetab:hover { color: var(--text-hi); background: var(--wash-2); }
+.sidetab.on {
+  color: var(--text-hi); background: var(--card); border-color: var(--line-3);
+  border-bottom-color: var(--card); font-weight: 600;
+}
+.sidetab[hidden] { display: none; }
+.side-scroll { flex: 1 1 auto; overflow-y: auto; padding: 14px; min-height: 0; }
+.side-scroll > section:last-child { margin-bottom: 4px; }
+.sg-off { display: none !important; }
+.side-run {
+  flex: 0 0 auto; border-top: 1px solid var(--line, var(--line-2));
+  padding: 10px 14px; background: var(--sunk);
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.side-run .primary, .side-run .ghost { flex: 1 1 auto; }
+.side-run .runnote {
+  flex: 1 0 100%; font-size: 10.5px; color: var(--muted-2); margin: 2px 0 0;
+}
+
+/* Controls were cramped at 250px. They are not any more. */
+.terr-side select, .terr-side input[type="text"],
+.terr-side input[type="number"], .terr-side input[type="file"] {
+  font-size: 12.5px; padding: 6px 8px;
+}
+.fieldlabel { margin-top: 10px; }
+
+/* ── configuration summary, above the map ─────────────────────────────── */
+.cfgbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding: 7px 14px; border-bottom: 1px solid var(--line, var(--line-2));
+  background: var(--sunk); font-size: 11.5px; min-height: 20px;
+}
+.cfgbar .cfgtitle {
+  font-size: 10px; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--muted-2); margin-right: 4px;
+}
+.cfgchip {
+  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+  border: 1px solid var(--line-3); border-radius: 999px; padding: 2px 9px;
+  color: var(--text-2); background: var(--wash-2);
+}
+.cfgchip b { color: var(--text-hi); font-weight: 600; }
+.cfgchip .k { color: var(--muted-2); }
+.cfgchip.key { border-color: var(--gold-line); background: rgba(240,208,75,.10); }
+.cfgchip.warn { border-color: var(--rust-line); background: rgba(217,116,75,.10); color: var(--bad); }
+
+/* ── results, tabbed, under the map ───────────────────────────────────── */
+.results-block {
+  border-top: 1px solid var(--line, var(--line-2)); display: flex;
+  flex-direction: column; min-height: 0; overflow: hidden;
+}
+.results-head {
+  display: flex; align-items: center; gap: 12px; padding: 8px 14px 0;
+  flex: 0 0 auto;
+}
+.rtabs { display: flex; gap: 4px; }
+.rtab {
+  font-size: 11.5px; padding: 4px 11px; border-radius: 999px; cursor: pointer;
+  background: transparent; border: 1px solid var(--line-3); color: var(--muted);
+  white-space: nowrap;
+}
+.rtab:hover { color: var(--text-hi); background: var(--wash-3); }
+.rtab.on { color: var(--text-hi); background: var(--wash-4); border-color: var(--line-4); }
+.rpane { flex: 1 1 auto; overflow: auto; padding: 10px 14px 12px; min-height: 0; }
+.rpane[hidden] { display: none; }
+.rpane > .terr-panel { border-top: none; padding: 0; overflow: visible; }
+
+/* The Overview page has its own shell but the same sidebar behaviour. */
+.layout > .panel { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.layout > .panel .side-scroll { padding: 14px; }
+.layout > .panel .setup-hint { margin: 14px 14px 0; }
+
+/* Results strip: short by default so the map keeps the window, tall on
+   demand so a long ranking is actually readable. */
+body.resultsbig .terr-main { grid-template-rows: auto 1fr auto 55vh; }
+body.resultsbig .terr-main.has-insights { grid-template-rows: auto 1fr auto 55vh; }
+body.resultsbig .main { grid-template-rows: auto 1fr 55vh; }
+body.mapmax .results-block { display: none; }
+.rtab.resize { border-style: dashed; }
+
+/* ── Preview Polygon ───────────────────────────────────────────────────── */
+body.preview { overflow-y: auto; }
+.pv-wrap { padding: 0 18px 40px; display: flex; flex-direction: column; gap: 12px; }
+.pv-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding-top: 14px; }
+.pv-crumb { font-size: 14px; color: var(--text-2); display: flex; align-items: center;
+  gap: 8px; flex-wrap: wrap; }
+.pv-crumb a { color: var(--gold); text-decoration: none; }
+.pv-crumb a:hover { text-decoration: underline; }
+.pv-crumb .sep { color: var(--muted-2); }
+.pv-levels { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+/* A hairline between "which level am I looking at" and the actions on the
+   view as a whole. Without it Clear sat flush against Desa and read as one
+   more level to drill into. */
+.pv-sep { width: 1px; height: 18px; background: var(--line-3); margin: 0 -4px; }
+
+/* Boundary toggles read as a second group beside the point toggles: same
+   control, different subject. The swatch is the layer's own colour, so the
+   checkbox says which outline it turns on without needing a legend. */
+/* A tag rather than a divider: when the row wraps, a leading rule looks like
+   a stray mark at the start of a line, whereas the word still says which
+   group you are looking at. */
+.pv-tag { font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); font-weight: 600; margin-right: 2px; }
+/* Sits under the map with the point legend: which outlines are drawn, how
+   many, and whether they were thinned for this zoom. */
+/* The focus banner sits directly under the map it describes. */
+.pv-focus { font-size: 12px; color: var(--text-2); padding: 7px 14px;
+  border-top: 1px solid var(--line-2); background: var(--wash-1);
+  display: flex; align-items: center; gap: 10px; }
+.pv-focus b { color: var(--text-hi); }
+.pv-focus button { background: none; border: 1px solid var(--line-3);
+  color: var(--muted); font: inherit; font-size: 11px; border-radius: 5px;
+  padding: 1px 8px; cursor: pointer; }
+.pv-focus button:hover { color: var(--text-hi); background: var(--wash-3); }
+
+/* A desa row leads somewhere -- the map -- so it says so on hover, and the
+   one being shown stays marked while you scroll the other 886. */
+table.pv-table tbody tr.focusable td.lv { cursor: zoom-in; }
+table.pv-table tbody tr.focus td { background: var(--pick-bg); }
+table.pv-table tbody tr.focus td.lv,
+table.pv-table tbody tr.focus td.rk { background: var(--pick-bg); }
+
+.pv-bndnote { font-size: 11.5px; color: var(--muted); padding: 0 14px 8px; }
+.pv-bndnote:empty { display: none; }
+.pv-bndnote i { display: inline-block; width: 14px; height: 0;
+  vertical-align: middle; border-top-width: 2px; border-top-style: solid;
+  margin-right: 5px; }
+.pv-bndnote b { color: var(--text-2); font-variant-numeric: tabular-nums; }
+.pv-bounds .checkline i {
+  display: inline-block; width: 15px; height: 0; vertical-align: middle;
+  border-top-width: 3px; border-top-style: solid; margin: 0 5px 0 2px;
+}
+.pv-cover { font-size: 12px; line-height: 1.5; border-radius: 8px;
+  padding: 9px 13px; border: 1px solid var(--line-3); color: var(--text-2); }
+.pv-cover.ok { border-color: var(--good-line); background: rgba(110,196,110,.07); }
+.pv-cover.warn { border-color: var(--warn-line); background: rgba(240,145,61,.09); color: var(--warn-ink); }
+.pv-cover b { color: var(--text-hi); }
+.pv-cards { display: grid; gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(126px, 1fr)); }
+.pv-card { border: 1px solid var(--line-2); border-radius: 8px; padding: 10px 12px;
+  background: var(--wash-1); }
+.pv-card .n { display: block; font-size: 19px; font-weight: 600; color: var(--text-hi);
+  font-variant-numeric: tabular-nums; }
+.pv-card .l { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
+.pv-tablewrap { overflow: auto; border: 1px solid var(--line-2); border-radius: 8px; }
+table.pv-table { font-size: 12px; min-width: 100%; }
+table.pv-table th.lv, table.pv-table td.lv { text-align: left; position: sticky;
+  left: 0; background: var(--card); z-index: 2; min-width: 190px; }
+table.pv-table thead th { position: sticky; top: 0; z-index: 3; }
+table.pv-table thead th.lv { z-index: 4; }
+
+/* ── ranking ─────────────────────────────────────────────────────────────
+   The whole header is the hit area, not a small glyph inside it: a column
+   header is already the thing you point at when you mean "this column", and
+   a 10px arrow is a target you have to aim for. */
+table.pv-table th.sortable { cursor: pointer; user-select: none;
+  white-space: nowrap; }
+table.pv-table th.sortable:hover { background: var(--wash-3); }
+table.pv-table th.sortable:focus-visible { outline: 2px solid var(--accent);
+  outline-offset: -2px; }
+/* The arrow slot is always present, even when empty. Sized on click it
+   would shift every other header sideways as the sort moves. */
+.srt { display: inline-block; width: 11px; margin-left: 4px;
+  font-size: 9px; color: var(--muted-2); }
+.srt.on { color: var(--accent); }
+table.pv-table th.rk, table.pv-table td.rk {
+  text-align: right; width: 36px; min-width: 36px; padding-right: 4px;
+  color: var(--muted); font-variant-numeric: tabular-nums;
+  position: sticky; left: 0; background: var(--card); z-index: 2; }
+table.pv-table thead th.rk { top: 0; z-index: 4; background: var(--thead); }
+table.pv-table tfoot td.rk { bottom: 0; background: var(--tfoot); }
+/* With a rank column in front, the name column parks beside it rather than
+   at the edge -- otherwise the two sticky columns stack on top of each
+   other as soon as the table scrolls. */
+table.pv-table.ranked th.lv, table.pv-table.ranked td.lv { left: 36px; }
+table.pv-table tfoot td { position: sticky; bottom: 0; background: var(--tfoot);
+  border-top: 1px solid var(--line-3); font-weight: 600; }
+table.pv-table tr.pick { cursor: pointer; }
+table.pv-table tr.pick:hover td { background: var(--wash-2); }
+table.pv-table tr.pick:hover td.lv { background: var(--panel-3); }
+.rtab.go { padding: 2px 9px; font-size: 11px; white-space: nowrap; }
+.pv-note { max-width: 900px; }
+
+/* ── territory filter bar, above the map ───────────────────────────────── */
+.terr-main.has-filter { grid-template-rows: auto auto 1fr auto 190px; }
+body.resultsbig .terr-main.has-filter { grid-template-rows: auto auto 1fr auto 55vh; }
+body.mapmax .terr-main.has-filter { grid-template-rows: auto auto 1fr auto; }
+.terrfilter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 14px; border-bottom: 1px solid var(--line, var(--line-2));
+  background: var(--sunk); }
+.tf-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  border: 1px solid var(--line-2); border-radius: 8px; padding: 5px 8px; }
+.tf-tag { font-size: 10px; text-transform: uppercase; letter-spacing: .07em;
+  color: var(--muted-2); }
+.tf-or { font-size: 11px; color: var(--muted-2); font-style: italic; }
+.terrfilter select { font-size: 12px; padding: 4px 7px; max-width: 190px;
+  background: var(--card); color: var(--text-hi); border: 1px solid var(--line-3);
+  border-radius: 6px; }
+.tf-spacer { flex: 1 1 auto; }
+
+/* Light basemap: keep the overlays readable against a pale background. */
+body.lightmap .maplegend, body.lightmap .cfgbar { background: var(--flip-bg); color: var(--flip-ink); }
+body.lightmap .cfgchip { border-color: var(--flip-line); color: var(--flip-ink);
+  background: rgba(0,0,0,.03); }
+body.lightmap .cfgchip b { color: var(--on-bright); }
+body.lightmap .cfgbar .cfgtitle,
+body.lightmap .maplegend .lgtitle { color: var(--flip-muted); }
+body.lightmap .maplegend .lg { color: var(--flip-ink); }
+
+/* ── Data Files ────────────────────────────────────────────────────────── */
+.fm-grid { display: grid; gap: 16px; grid-template-columns: 340px 1fr;
+  align-items: start; padding-top: 14px; }
+@media (max-width: 900px) { .fm-grid { grid-template-columns: 1fr; } }
+.fm-upload, .fm-list { border: 1px solid var(--line-2); border-radius: 10px;
+  padding: 14px 16px; background: var(--wash-1); }
+.fm-upload h2, .fm-list h2 { font-size: 12px; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; }
+.fm-head { display: flex; align-items: center; justify-content: space-between; }
+.fm-upload select, .fm-upload input[type="text"] { width: 100%;
+  box-sizing: border-box; margin-bottom: 6px; background: var(--card);
+  border: 1px solid var(--line-3); border-radius: 6px; color: var(--text-hi);
+  padding: 6px 8px; font: inherit; font-size: 12.5px; }
+.fm-msg { font-size: 12px; margin-top: 10px; line-height: 1.5; }
+.fm-msg.good { color: var(--good); }
+.fm-msg.bad { color: var(--bad); }
+.fm-msg.warn { color: var(--warn-ink); }
+.fm-row { display: flex; align-items: center; gap: 10px; padding: 9px 4px;
+  border-bottom: 1px solid var(--line-1); }
+.fm-row:last-child { border-bottom: none; }
+.fm-row .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+.fm-main { flex: 1 1 auto; min-width: 0; }
+.fm-name { font-size: 13px; color: var(--text-hi); overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+.fm-meta { font-size: 11px; color: var(--muted-2); margin-top: 2px; }
+.fm-off { color: var(--gold-2); }
+.fm-layer { color: var(--muted); }
+.fm-layer a { color: var(--rust); text-decoration: none; margin-left: 4px; }
+.fm-layer a:hover { text-decoration: underline; }
+.fm-act { display: flex; gap: 6px; flex: 0 0 auto; }
+.fm-act .del { border-color: var(--rust-line); color: var(--rust); }
+.fm-act .del:hover { background: rgba(217,116,75,.12); color: var(--rust-ink); }
+body.files .drop { margin: 4px 0 10px; }
+
+/* ── Data Files: upload queue and bulk selection ───────────────────────── */
+
+/* The queue sits between the drop zone and the Upload button, so it has to
+   stay short even when a dozen files are waiting — hence the scroll. */
+.fm-queue { max-height: 46vh; overflow-y: auto; margin: 0 0 10px; }
+.fm-queue:empty { display: none; }
+
+.q-row { border: 1px solid var(--line-2); border-left: 3px solid var(--line-3);
+  border-radius: 7px; padding: 7px 9px; margin-bottom: 6px;
+  background: var(--wash-1); }
+.q-row.uploading { border-left-color: var(--gold-2); }
+.q-row.done      { border-left-color: var(--good-3); opacity: .72; }
+.q-row.failed    { border-left-color: var(--rust); }
+.q-row.bad       { border-left-color: var(--rust); opacity: .72; }
+
+.q-top { display: flex; align-items: center; gap: 8px; }
+.q-name { flex: 1 1 auto; min-width: 0; font-size: 12.5px; color: var(--text-hi);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.q-size { flex: 0 0 auto; font-size: 11px; color: var(--muted-2);
+  font-variant-numeric: tabular-nums; }
+.q-st { flex: 0 0 auto; font-size: 10.5px; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted); }
+.q-row.done .q-st   { color: var(--good); }
+.q-row.failed .q-st,
+.q-row.bad .q-st    { color: var(--bad); }
+
+.q-x { flex: 0 0 auto; width: 20px; height: 20px; line-height: 1; padding: 0;
+  border: 1px solid var(--line-3); border-radius: 5px; background: transparent;
+  color: var(--muted); font-size: 14px; cursor: pointer; }
+.q-x:hover { border-color: var(--rust-line); color: var(--rust);
+  background: rgba(217,116,75,.12); }
+
+/* The per-row type picker repeats the same choice as the panel above it, so
+   it is deliberately quieter than a normal select. */
+.q-role { width: 100%; box-sizing: border-box; margin-top: 6px;
+  background: var(--card); border: 1px solid var(--line-3); border-radius: 6px;
+  color: var(--text-2); padding: 4px 7px; font: inherit; font-size: 12px; }
+
+.q-note { font-size: 11px; margin-top: 5px; line-height: 1.45;
+  word-break: break-word; }
+.q-note.bad  { color: var(--bad); }
+.q-note.good { color: var(--good); }
+
+/* ── bulk controls above the file list ─────────────────────────────────── */
+.fm-bulk { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 0 10px; border-bottom: 1px solid var(--line-1); margin-bottom: 4px; }
+.fm-all { flex: 0 0 auto; margin: 0; }
+.fm-bulk #selCount { flex: 1 1 auto; font-variant-numeric: tabular-nums; }
+.fm-bulk .rtab[disabled] { opacity: .4; cursor: default; }
+.fm-bulk .rtab[disabled]:hover { background: transparent; }
+
+.fm-row input.pick { flex: 0 0 auto; margin: 0; cursor: pointer; }
+
+/* Data Files has no map, so the shared header's map control does not belong. */
+body.files #mapMax { display: none; }
+
+/* The data type sits above the drop zone and covers the whole batch. */
+.fm-lab { display: block; font-size: 10.5px; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--muted); margin: 2px 0 5px; }
+.fm-upload #role { margin-bottom: 10px; }
+
+/* what each queued file will be filed as */
+.q-as { font-size: 11px; color: var(--muted); margin-top: 5px; }
+
+/* A tab whose only section is hidden loses its tab button, so the Territory
+   panel keeps a body at all times and shows this instead of disappearing. */
+.emptystate { border: 1px dashed var(--line-3); border-radius: 4px; padding: 12px 13px;
+  font-size: 12px; line-height: 1.5; color: var(--muted); }
+.emptystate b { color: var(--text-2); display: inline; }
+.emptystate b:first-child { display: block; margin-bottom: 3px; }
+
+/* ── Preview Polygon: territory preview ───────────────────────────────── */
+.pv-terr { border: 1px solid var(--line-3); border-radius: 6px; background: var(--inset);
+  margin: 14px 0; overflow: hidden; }
+.pv-terr-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 10px 14px; border-bottom: 1px solid var(--line-2); }
+.pv-terr-head h2 { font-size: 13px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--text-2); margin: 0; font-weight: 600; }
+.pv-terr-head h2 .muted { text-transform: none; letter-spacing: 0; font-weight: 400;
+  color: var(--muted); font-size: 12px; }
+.pv-terr-head .segmented { grid-template-columns: repeat(2, 1fr); margin: 0;
+  min-width: 210px; }
+.pv-reach { display: flex; align-items: center; gap: 8px; font-size: 11px;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.pv-reach b { color: var(--text-hi); font-variant-numeric: tabular-nums; }
+.pv-reach input { width: 130px; }
+.pv-map { height: 460px; width: 100%; background: var(--well); }
+.pv-terr-foot { display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 10px 14px; border-top: 1px solid var(--line-2); }
+.pv-terr-foot .readout { grid-template-columns: repeat(4, minmax(78px, 1fr));
+  margin: 0; flex: none; }
+.pv-terr-foot .hint { margin: 0; flex: 1; min-width: 240px; }
+.pv-terr.off .pv-map, .pv-terr.off .pv-terr-foot { display: none; }
+.segmented { grid-auto-flow: column; grid-auto-columns: 1fr; grid-template-columns: none; }
+.pv-terr-head .segmented { min-width: 320px; }
+.pv-dots { margin: 0; white-space: nowrap; }
+
+/* Point legend under the preview map. Colour is never the only channel —
+   every class is named and counted here, and every dot has a hover label. */
+.pv-legend { display: flex; flex-wrap: wrap; gap: 6px 20px; padding: 9px 14px;
+  border-top: 1px solid var(--line-2); background: var(--legend-bg); }
+.pv-legend .lg { display: flex; align-items: center; gap: 7px; font-size: 12px;
+  color: var(--text-3); }
+.pv-legend .lg i { width: 10px; height: 10px; border-radius: 50%; flex: none;
+  box-shadow: 0 0 0 1.5px rgba(11,14,20,.9); }
+.pv-legend .lg i.big { width: 13px; height: 13px; }
+.pv-legend .lg b { color: var(--text-hi); font-variant-numeric: tabular-nums; font-weight: 500; }
+.pv-legend .note { color: var(--muted); font-size: 11.5px; }
+.pv-dots { display: flex; gap: 12px; align-items: center; }
+.pv-dots .checkline { margin: 0; white-space: nowrap; }
+
+/* ── Sales Area summary ─────────────────────────────────────────────────
+   A table under the map, not in the sidebar: six numeric columns and twelve
+   rows need width to be read across, and the sidebar has none to spare.
+   Numbers are tabular so the columns line up vertically — a ragged column of
+   figures is harder to scan than a short one. */
+.sa-head {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 8px; flex-wrap: wrap;
+}
+.sa-crumbs { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.sa-crumb {
+  background: none; border: 0; padding: 2px 4px; cursor: pointer;
+  color: var(--accent); font: inherit; font-size: 12px; border-radius: 4px;
+}
+.sa-crumb:hover { background: var(--wash-3); }
+.sa-crumb.on { color: var(--text); cursor: default; font-weight: 600; }
+.sa-sep { color: var(--muted); font-size: 12px; }
+
+.sa-wrap { overflow-x: auto; }
+.sa-table {
+  width: 100%; border-collapse: collapse; font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.sa-table th, .sa-table td {
+  padding: 6px 10px; border-bottom: 1px solid var(--line);
+  text-align: left; white-space: nowrap;
+}
+.sa-table th {
+  color: var(--muted); font-weight: 600; font-size: 11px;
+  text-transform: uppercase; letter-spacing: .04em;
+  position: sticky; top: 0; background: var(--panel);
+}
+.sa-table td.n, .sa-table th.n { text-align: right; }
+.sa-table tbody tr.drill { cursor: pointer; }
+.sa-table tbody tr.drill:hover { background: var(--wash-3); }
+.sa-go { color: var(--muted); margin-left: 8px; opacity: 0; }
+.sa-table tbody tr.drill:hover .sa-go { opacity: 1; }
+.sa-table tfoot td {
+  border-top: 1px solid var(--line); border-bottom: 0;
+  font-weight: 600; color: var(--text);
+}
+
+
+/* ── Ruler ───────────────────────────────────────────────────────────────
+   Gold, because nothing else on these maps is: the measurement has to be
+   findable over a choropleth, over territory polygons and over a basemap in
+   either theme, and a colour already carrying meaning would make it look
+   like part of the data. */
+.ruler-ctl a { font-size: 15px; line-height: 26px; text-align: center;
+  width: 30px; height: 30px; display: block; text-decoration: none;
+  background: var(--panel); color: var(--text-2); }
+.ruler-ctl a:hover { background: var(--panel-2); color: var(--text-hi); }
+.ruler-ctl a.on { background: var(--gold-fill); color: var(--on-gold); }
+/* Crosshair while measuring: the pointer says the map is in a different
+   mode, which is the only cue that a click will not open a popup. */
+.leaflet-container.measuring { cursor: crosshair; }
+.leaflet-container.measuring .leaflet-interactive { cursor: crosshair; }
+
+.ruler-label {
+  background: var(--gold-fill); color: var(--on-gold);
+  font: 600 10.5px/1.35 system-ui, sans-serif; white-space: nowrap;
+  padding: 1px 5px; border-radius: 4px; width: auto !important;
+  height: auto !important; margin: 0 !important;
+  transform: translate(8px, -50%); box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+
+.ruler-box { border-top: 1px solid var(--line-2); background: var(--panel);
+  padding: 8px 12px; font-size: 12px; }
+.ruler-box.off { display: none; }
+.rl-head { display: flex; align-items: center; gap: 12px; }
+.rl-head b { font-size: 15px; color: var(--gold); font-variant-numeric: tabular-nums; }
+.rl-area { color: var(--muted); }
+.rl-x { margin-left: auto; background: none; border: 1px solid var(--line-3);
+  color: var(--muted); font: inherit; font-size: 11px; border-radius: 5px;
+  padding: 1px 8px; cursor: pointer; }
+.rl-x:hover { color: var(--text-hi); background: var(--wash-3); }
+.rl-hint { color: var(--muted); font-size: 11px; }
+.rl-tbl { border-collapse: collapse; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.rl-tbl th { text-align: left; font-size: 10px; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--muted); font-weight: 600;
+  padding: 2px 14px 2px 0; }
+.rl-tbl td { padding: 2px 14px 2px 0; color: var(--text-2); }
+.rl-tbl td:first-child { color: var(--muted); }
+
+
+/* ── the microcluster roster ──────────────────────────────────────────────
+   Clicking a microcluster asks two questions at once -- "where is it" and
+   "who works it" -- so the answer to the second sits beside the answer to
+   the first rather than replacing it. The panel is a sibling of the map,
+   not an overlay on top of it: a floating card would cover the very
+   polygons the roster is about. */
+.pv-mapwrap { display: flex; align-items: stretch; }
+.pv-mapwrap .pv-map { flex: 1; min-width: 0; }
+.pv-mc { flex: 0 0 320px; max-width: 320px; height: 460px; overflow-y: auto;
+  border-left: 1px solid var(--line-2); background: var(--inset);
+  font-size: 12px; }
+.pv-mc[hidden] { display: none; }
+.pv-mc-head { position: sticky; top: 0; z-index: 2; padding: 11px 13px 9px;
+  background: var(--inset); border-bottom: 1px solid var(--line-2); }
+.pv-mc-head h3 { margin: 0 0 3px; font-size: 13px; color: var(--text-hi);
+  font-weight: 600; letter-spacing: .01em; }
+.pv-mc-head .path { color: var(--text-2); font-size: 11px; }
+.pv-mc-head .x { position: absolute; top: 9px; right: 9px; background: none;
+  border: 1px solid var(--line-3); color: var(--text-2); border-radius: 4px;
+  cursor: pointer; font-size: 11px; line-height: 1; padding: 4px 7px; }
+.pv-mc-head .x:hover { color: var(--text-hi); background: var(--wash-3); }
+.pv-mc-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+  background: var(--line-2); border-bottom: 1px solid var(--line-2); }
+.pv-mc-stats div { background: var(--inset); padding: 7px 9px; }
+.pv-mc-stats b { display: block; color: var(--text-hi); font-size: 13px;
+  font-variant-numeric: tabular-nums; }
+.pv-mc-stats span { color: var(--text-2); font-size: 10px;
+  text-transform: uppercase; letter-spacing: .06em; }
+.pv-mc-note { padding: 7px 13px; color: var(--text-2); font-size: 11px;
+  border-bottom: 1px solid var(--line-2); }
+
+/* One row per rep. The whole row is the target -- a small "zoom" link would
+   be a smaller thing to hit for the same result. */
+.pv-dse { display: block; width: 100%; text-align: left; background: none;
+  border: 0; border-bottom: 1px solid var(--line-2); padding: 9px 13px;
+  cursor: pointer; color: inherit; font: inherit; }
+.pv-dse:hover { background: var(--wash-3); }
+.pv-dse.on { background: var(--wash-2); box-shadow: inset 3px 0 0 var(--accent, #35d0e0); }
+.pv-dse .code { color: var(--text-hi); font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px;
+  word-break: break-all; }
+.pv-dse .figs { display: flex; gap: 10px; margin-top: 3px; color: var(--text-2);
+  font-variant-numeric: tabular-nums; }
+.pv-dse .figs b { color: var(--text-hi); font-weight: 500; }
+.pv-dse .meta { margin-top: 3px; color: var(--text-2); font-size: 11px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Share of the microcluster's outlets, drawn rather than only written --
+   the eye finds an uneven split faster than it reads thirty-nine numbers. */
+.pv-dse .bar { height: 3px; margin-top: 5px; border-radius: 2px;
+  background: var(--line-2); overflow: hidden; }
+.pv-dse .bar i { display: block; height: 100%; background: #35d0e0; }
+.pv-mc-empty { padding: 14px 13px; color: var(--text-2); }
+
+@media (max-width: 1100px) {
+  .pv-mapwrap { display: block; }
+  .pv-mc { max-width: none; width: 100%; height: 300px; border-left: 0;
+    border-top: 1px solid var(--line-2); }
+}
+
+
+/* ── sample overlay panel ─────────────────────────────────────────────────
+   Sits under the map controls and above the map, because it is an input to
+   what the map shows rather than a readout of it. */
+.smp { border-top: 1px solid var(--line-2); background: var(--inset); }
+.smp-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  padding: 9px 14px 0; font-size: 12px; }
+.smp-head .muted { font-size: 11.5px; }
+.smp-body { display: flex; gap: 14px; align-items: stretch; flex-wrap: wrap;
+  padding: 9px 14px 11px; }
+.smp-drop { flex: 0 0 260px; border: 1px dashed var(--line-3); border-radius: 6px;
+  padding: 12px 14px; text-align: center; cursor: pointer; background: var(--well);
+  display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+.smp-drop:hover, .smp-drop.over { border-color: #35d0e0; background: var(--wash-3); }
+.smp-drop b { font-size: 12px; color: var(--text-hi); }
+.smp-drop span { font-size: 11px; color: var(--text-2); }
+.smp-who { flex: 1; min-width: 300px; display: flex; gap: 10px;
+  flex-wrap: wrap; align-items: flex-end; }
+.smp-who label { display: flex; flex-direction: column; gap: 3px;
+  font-size: 11px; color: var(--text-2); flex: 1 1 130px; }
+.smp-who input { background: var(--well); border: 1px solid var(--line-3);
+  border-radius: 4px; padding: 6px 8px; color: var(--text-hi); font: inherit;
+  font-size: 12px; }
+.smp-who input:focus { outline: none; border-color: #35d0e0; }
+.smp-who button { flex: 0 0 auto; }
+.smp-msg { padding: 0 14px 10px; font-size: 11.5px; color: var(--text-2); }
+.smp-msg.bad { color: #ef8073; }
+.smp-msg b { color: var(--text-hi); }
+.smp-kept { padding: 0 14px 10px; display: flex; gap: 14px; flex-wrap: wrap;
+  align-items: center; font-size: 12px; }
+.smp-tag { font-size: 10px; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--text-2); }
+
+/* One colour per rep, every one of them named and counted: twelve colours
+   cannot label thirty-nine reps on their own. */
+.smp-legend { padding: 0 14px 11px; display: flex; gap: 5px 8px;
+  flex-wrap: wrap; align-items: center; }
+.smp-leg-head { flex: 0 0 100%; font-size: 11.5px; color: var(--text-2);
+  margin-bottom: 3px; }
+.smp-leg-head b { color: var(--text-hi); }
+.smp-leg-head button { background: none; border: 1px solid var(--line-3);
+  color: var(--text-2); border-radius: 4px; cursor: pointer; font-size: 11px;
+  padding: 2px 7px; margin-left: 8px; }
+.smp-leg-head button:hover { color: var(--text-hi); background: var(--wash-3); }
+.smp-dse { display: inline-flex; align-items: center; gap: 6px;
+  background: var(--well); border: 1px solid var(--line-2); border-radius: 4px;
+  padding: 3px 8px; font: inherit; font-size: 11px; color: var(--text-2);
+  cursor: pointer; }
+.smp-dse:hover { color: var(--text-hi); border-color: var(--line-3); }
+.smp-dse.on { border-color: #35d0e0; color: var(--text-hi); }
+.smp-dse i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.smp-dse b { color: var(--text-hi); font-weight: 500; }
+.smp-pop table { border-collapse: collapse; margin-top: 4px; }
+.smp-pop th { text-align: left; padding: 1px 8px 1px 0; font-weight: 500;
+  color: var(--text-2); white-space: nowrap; font-size: 11px; }
+.smp-pop td { padding: 1px 0; color: var(--text-hi); font-size: 11px; }
+
+
+/* ── the model built from a sample ────────────────────────────────────────
+   Sits with the file it was built from, not with the base layers: it is an
+   answer about that file, and moving it elsewhere would make it look like a
+   property of the map. */
+.smp-model { display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  padding: 2px 14px 10px; }
+.smp-model[hidden] { display: none; }
+.smp-model .segmented { min-width: 300px; margin: 0; }
+.smp-model .pv-reach { font-size: 11.5px; }
+.smp-readout { display: grid; grid-template-columns: repeat(6, minmax(72px, 1fr));
+  gap: 1px; background: var(--line-2); margin: 0 14px 11px;
+  border: 1px solid var(--line-2); border-radius: 5px; overflow: hidden; }
+.smp-readout[hidden] { display: none; }
+.smp-readout div { background: var(--inset); padding: 7px 9px; }
+.smp-readout b { display: block; color: var(--text-hi); font-size: 13px;
+  font-variant-numeric: tabular-nums; }
+.smp-readout span { color: var(--text-2); font-size: 10px;
+  text-transform: uppercase; letter-spacing: .06em; }
+.smp-dse .mfig { color: var(--text-2); }
+.checkline i.dot { width: 9px; height: 9px; border-radius: 50%;
+  display: inline-block; border: 0; }
+
+@media (max-width: 900px) {
+  .smp-readout { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ── AREA DETAIL, UNDER THE MAP ──────────────────────────────────────────
+   The map says where; this says what is in it. Below the map rather than in
+   a popup, because the desa breakdown is a nine-column table and a popup
+   that size covers the polygon it is describing. */
+.smp-detail {
+  margin-top: 14px;
+  border: 1px solid var(--line, #2a2f3a);
+  background: var(--panel, #12151c);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.smp-dhead {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line, #2a2f3a);
+}
+.smp-dtitle { font-size: 15px; }
+.smp-dgap { flex: 1; }
+.smp-detail .smp-readout { margin: 0; padding: 10px 12px; }
+
+.smp-dtabs {
+  display: flex; gap: 6px; padding: 8px 12px 0;
+}
+.smp-dwrap {
+  max-height: 340px; overflow: auto; padding: 8px 12px 12px;
+}
+.smp-dtable {
+  width: 100%; border-collapse: collapse; font-size: 12.5px;
+}
+.smp-dtable th, .smp-dtable td {
+  text-align: left; padding: 6px 8px; white-space: nowrap;
+  border-bottom: 1px solid var(--line-soft, rgba(128,140,160,.18));
+}
+.smp-dtable thead th {
+  position: sticky; top: 0; z-index: 1;
+  background: var(--panel, #12151c);
+  font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--muted, #8b93a3);
+  border-bottom: 1px solid var(--line, #2a2f3a);
+}
+.smp-dtable th.n, .smp-dtable td.n {
+  text-align: right; font-variant-numeric: tabular-nums;
+}
+.smp-dtable tbody tr:hover { background: rgba(128,140,160,.10); }
+.smp-dtable tbody tr.click { cursor: pointer; }
+
+/* Coverage reads as a bar behind the number, so a table of twenty desa
+   sorts itself visually before it is read. */
+.smp-cov { position: relative; display: block; min-width: 78px; }
+.smp-cov i {
+  position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  height: 13px; background: rgba(53,208,224,.22); border-radius: 2px;
+  display: block; z-index: 0;
+}
+.smp-cov b { position: relative; z-index: 1; font-weight: 600; }
+.smp-cov.full i { background: rgba(110,196,110,.30); }
+.smp-cov.thin i { background: rgba(242,153,74,.28); }
+
+.smp-dot-dse {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  margin-right: 6px; vertical-align: baseline;
+}
+
+/* Profile target: which polygon a click is asking about. */
+.pv-target { display:inline-flex; align-items:center; gap:8px; margin-left:10px; }
+.pv-target select {
+  font: inherit; font-size: 12px; padding: 4px 8px;
+  border: 1px solid var(--line, #2a2f3a);
+  background: var(--panel, #12151c); color: inherit; border-radius: 6px;
+}

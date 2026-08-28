@@ -1,0 +1,11 @@
+<header class="terr-top">
+  <div class="brandmark">NEW POLYGON PJP DSE</div>
+  <nav class="mainnav">
+    {% for m in menus %}
+    <a class="navitem {{ 'on' if m.key == active else '' }}" href="{{ m.path }}"
+       title="{{ m.blurb }}">{{ m.label }}</a>
+    {% endfor %}
+  </nav>
+  <button type="button" class="mapbtn" id="mapMax" title="Hide the side and bottom panels and give the whole window to the map">Expand map</button>
+  <span class="muted small" id="status">loading…</span>
+</header>

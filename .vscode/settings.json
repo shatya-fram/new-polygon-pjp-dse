@@ -1,0 +1,60 @@
+{
+  // ── WHY THIS FILE EXISTS ────────────────────────────────────────────────
+  // This folder is 2.3 GB of source exports and build output around a small
+  // application. Opened as-is, VS Code indexes all of it: the file watcher
+  // sits on 1.3 GB of KML, and a search for any symbol also returns the 38
+  // superseded .py files under _to_delete — including copies of app.py and
+  // config.py, which is exactly the kind of near-miss that costs an hour.
+  //
+  // Nothing here is hidden that anyone needs to edit. The data folders are
+  // still on disk and still reachable from the terminal.
+
+  // Out of the explorer entirely: build leftovers and a superseded release.
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    "_to_delete": true,
+    ".venv": true
+  },
+
+  // Out of search results. `data` and `dist` stay visible in the explorer —
+  // you will want to look at data/public — but a full-text search through a
+  // 602 MB database is never what you meant.
+  "search.exclude": {
+    "Data Upload": true,
+    "Data Samples": true,
+    "_to_delete": true,
+    "data": true,
+    "dist": true,
+    ".venv": true,
+    "exports": true
+  },
+
+  // Out of the file watcher. This is the one that decides whether the editor
+  // feels fast.
+  "files.watcherExclude": {
+    "**/Data Upload/**": true,
+    "**/Data Samples/**": true,
+    "**/_to_delete/**": true,
+    "**/data/**": true,
+    "**/dist/**": true,
+    "**/.venv/**": true
+  },
+
+  // The project's own interpreter — Homebrew python3.14. A bare `python3` on
+  // macOS has none of this application's dependencies, which is how
+  // start.sh failed the first time it was run from the wrong shell.
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "python.terminal.activateEnvironment": true,
+
+  // The house style in this codebase is 79 columns and comments that explain
+  // the decision, not the syntax. The ruler keeps the first half honest.
+  "[python]":     { "editor.rulers": [79] },
+  "[javascript]": { "editor.rulers": [79] },
+  "[html]":       { "editor.rulers": [79] },
+  "[css]":        { "editor.rulers": [79] },
+
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "git.ignoreLimitWarning": true
+}

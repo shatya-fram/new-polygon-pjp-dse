@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ page_title }} — NEW POLYGON PJP DSE</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/territory.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/configuration.css') }}">
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem("apl.theme");
+      var m = (s === "dark" || s === "light") ? s
+        : (window.matchMedia
+           && window.matchMedia("(prefers-color-scheme: light)").matches
+           ? "light" : "dark");
+      document.documentElement.setAttribute("data-boot-theme", m);
+    } catch (e) { /* private window — the default dark stands */ }
+  })();
+</script>
+</head>
+<body class="terr preview lm">
+
+{% include "_nav.html" %}
+
+<div class="pv-wrap">
+
+  <div class="lm-head">
+    <div>
+      <h1>Base first, analysis on top</h1>
+      <p class="hint">Not a diagram of an intention — what this database
+        actually holds, in the order it is drawn. A tier with nothing in it is
+        drawn empty and labelled, because a picture that hides a gap is worse
+        than no picture.</p>
+    </div>
+    <div class="lm-score" id="score"><span class="muted small">reading…</span></div>
+  </div>
+
+  <div class="lm-grid">
+
+    <!-- The drawn stack, top of the pile first: whatever is stamped last
+         sits at the top of the screen, the way it sits on the map. -->
+    <section class="lm-stack" id="stack">
+      <span class="muted small">reading…</span>
+    </section>
+
+    <aside class="lm-side">
+      <section class="lm-ref" id="refBox">
+        <h2>Quoted, never drawn</h2>
+        <div id="refList"><span class="muted small">…</span></div>
+      </section>
+
+      <section class="lm-rules">
+        <h2>The rules this stack holds to</h2>
+        <div id="rules"><span class="muted small">…</span></div>
+      </section>
+    </aside>
+  </div>
+
+  <section class="lm-order">
+    <div class="lm-orderhead">
+      <h2>Draw order</h2>
+      <span class="muted small">Base layers can be reordered among
+        themselves. An analysis layer can never sink below one.</span>
+    </div>
+    <div class="lm-orderrail" id="order"><span class="muted small">…</span></div>
+  </section>
+
+  <section class="lm-extra" id="extraBox" hidden>
+    <h2>Loaded, but not part of the declared stack</h2>
+    <p class="hint">These layers are in the database and will draw on the map.
+      Nothing claims them, which usually means a file went into the wrong slot
+      — worth naming rather than hiding.</p>
+    <div id="extra"></div>
+  </section>
+</div>
+
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+<script src="{{ url_for('static', filename='js/layer_model.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+# Version floors, not pins. duckdb ships compiled wheels per CPython version;
+# an exact pin on an older release makes pip fall back to building DuckDB's
+# C++ core from source, which takes ~an hour and usually fails. Floors let
+# pip pick a release that actually has a wheel for your interpreter.
+Flask>=3.0,<4
+duckdb>=1.5.5
+requests>=2.32
+python-dotenv>=1.0
+openpyxl>=3.1.5

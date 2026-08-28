@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ page_title }} — NEW POLYGON PJP DSE</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/territory.css') }}">
+</head>
+<body class="terr">
+
+{% include "_nav.html" %}
+
+<div class="terr-wrap">
+  <aside class="terr-side">
+
+    <section data-group="Model">
+      <h2>Model — KSI v2.0</h2>
+      <p class="hint">Stage&nbsp;1 kecamatan screening, implemented from
+        <code>docs/03-SCORING-MODEL.md</code> §0. Weights and gates are the
+        document's; anything this database cannot supply is reported below
+        rather than quietly scored as zero. Set every step, then
+        <b>Run model</b> — nothing is scored until you do.</p>
+      <div class="wfstate" id="wfState"></div>
+    </section>
+
+    <section data-group="Model">
+      <h2><span class="stepno">1</span> Strategy &amp; basis</h2>
+      <div class="paramgrid">
+        <label class="fieldlabel" for="pStrategy">Strategy (gate G3)</label>
+        <select id="pStrategy">
+          <option value="DENSIFY" selected>DENSIFY — grow where we are strong</option>
+          <option value="ATTACK">ATTACK — go where our share is low</option>
+        </select>
+
+        <label class="fieldlabel" for="pScope">Percentile basis</label>
+        <select id="pScope">
+          <option value="stratum" selected>Within stratum (urban vs rural)</option>
+          <option value="territory">Whole territory</option>
+        </select>
+      </div>
+    </section>
+
+    <section data-group="Model">
+      <h2><span class="stepno">2</span> Population</h2>
+      <p class="hint">Derived: summed from the desa export
+        (<code>ref_kelurahan.population</code>, 887 desa → all 121 kecamatan).
+        There is no population column on the kecamatan profile, so this term
+        is only as current as the desa file you last imported.</p>
+      <div class="paramgrid">
+        <label class="fieldlabel" for="pPopMetric">Population measure (KSI weight 0.20)</label>
+        <select id="pPopMetric">
+          <option value="density" selected>People per km² — catchment intensity</option>
+          <option value="total">Head count — the document's r(population)</option>
+        </select>
+      </div>
+    </section>
+
+    <section data-group="Model">
+      <h2><span class="stepno">3</span> Distance to the existing estate</h2>
+      <div class="paramgrid">
+        <label class="fieldlabel" for="pDistMode">How distance is applied</label>
+        <select id="pDistMode">
+          <option value="term" selected>Scored term — graded, local variant</option>
+          <option value="min">Gate G1 — at least N km away (avoid cannibalising)</option>
+          <option value="max">Gate G1 — at most N km (document §0 as written)</option>
+        </select>
+
+        <label class="check"><input type="checkbox" id="pHybrid" checked>
+          <span><b>Hybrid IM3 / 3Store.</b> A Gerai serves 3ID customers and a
+          3Store serves IM3 customers, so distance is measured to the nearest
+          counter of <i>either</i> brand. Untick to treat each brand
+          separately against its own threshold.</span></label>
+
+        <div id="distTermBox">
+          <p class="hint warn-hint">Not in the document. §0 spends distance as
+            a hard gate; a 10&nbsp;km cut removes all twenty of the largest
+            kecamatan, which all sit 2–6&nbsp;km from a counter. Runs under
+            this setting are labelled a local variant.</p>
+
+          <label class="fieldlabel" for="pDistZero">Scores 0 at or below (km)</label>
+          <input type="number" id="pDistZero" value="2" step="0.5" min="0">
+
+          <label class="fieldlabel" for="pDistFull">Scores 100 at or above (km)</label>
+          <input type="number" id="pDistFull" value="15" step="0.5" min="0">
+
+          <label class="fieldlabel" for="pDistW">Weight taken off the top</label>
+          <input type="number" id="pDistW" value="0.15" step="0.05" min="0" max="0.9">
+          <p class="hint">The document's six terms are renormalised to
+            (1 − weight), so they keep their ratios to each other.</p>
+        </div>
+
+        <div id="distGateBox" hidden>
+          <div id="hybridOn">
+            <label class="fieldlabel" for="pKmHybrid">G1 · km to nearest IM3 <i>or</i> 3Store</label>
+            <input type="number" id="pKmHybrid" value="10" step="0.5" min="0">
+          </div>
+          <div id="hybridOff" hidden>
+            <label class="fieldlabel" for="pKmIm3">G1 · km to nearest IM3 gerai</label>
+            <input type="number" id="pKmIm3" value="10" step="0.5" min="0">
+            <label class="fieldlabel" for="pKm3id">G1 · km to nearest 3Store</label>
+            <input type="number" id="pKm3id" value="10" step="0.5" min="0">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section data-group="Model">
+      <h2><span class="stepno">4</span> Gates</h2>
+      <div class="paramgrid">
+        <label class="fieldlabel" for="pVlr">G2 · VLR subscribers, minimum</label>
+        <input type="number" id="pVlr" value="80000" step="1000" min="0">
+
+        <label class="fieldlabel" for="pVlrPct">G2 · VLR percentile, minimum</label>
+        <input type="number" id="pVlrPct" value="40" step="5" min="0" max="100">
+
+        <label class="fieldlabel" for="pMsMin">G3 · share percentile floor (DENSIFY)</label>
+        <input type="number" id="pMsMin" value="40" step="5" min="0" max="100">
+
+        <label class="fieldlabel" for="pMsMax">G3 · share percentile ceiling (ATTACK)</label>
+        <input type="number" id="pMsMax" value="50" step="5" min="0" max="100">
+
+        <label class="check"><input type="checkbox" id="pGates" checked>
+          Apply the gates (unticked = score everything and only report which
+          gate each kecamatan would have failed)</label>
+      </div>
+    </section>
+
+    <section data-group="Model">
+      <h2><span class="stepno">5</span> Commercial inputs</h2>
+      <div class="paramgrid">
+        <label class="fieldlabel" for="pBanks">Top banks counted separately</label>
+        <input type="text" id="pBanks" value="BCA, Bank Mandiri, BNI, BRI">
+
+        <label class="fieldlabel" for="pRadU">Candidate catchment, urban (km)</label>
+        <input type="number" id="pRadU" value="1.5" step="0.25" min="0.25">
+
+        <label class="fieldlabel" for="pRadR">Candidate catchment, rural (km)</label>
+        <input type="number" id="pRadR" value="3" step="0.25" min="0.25">
+
+        <label class="check"><input type="checkbox" id="pIpp">
+          Count IPP partner outlets as own stores in retail share of voice</label>
+
+        <label class="check"><input type="checkbox" id="pCpi">
+          <span><b>Include CPI — competitive presence (weight 0.12).</b>
+          Off by default: only 27% of kecamatan hold any own or competitor
+          service point and there are 38 competitor points in total, so the
+          term scored the neutral 50 almost everywhere. Its weight is
+          redistributed across the remaining terms, not zeroed.</span></label>
+      </div>
+      <div id="gateBox" class="gatebox"></div>
+      <p class="hint" id="modelNote"></p>
+      <p class="hint">The full weight and availability audit — which of the
+        document's terms this database can support, and what was done with the
+        weight of the ones it cannot — is under the map on the
+        <b>Model audit</b> tab.</p>
+    </section>
+
+    <section data-group="Candidates">
+      <h2>Candidate sites</h2>
+      <p class="hint">An .xlsx with columns <b>LOCATIONS</b>, <b>KECAMATAN</b>,
+        <b>LONG</b> and <b>LAT</b>. Column order and letter case do not matter.
+        Each site is placed by point-in-polygon; the KECAMATAN you typed is
+        reported back next to the one the geometry found, so a mismatch is
+        visible rather than assumed away.</p>
+      <input type="file" id="siteFile" accept=".xlsx,.xlsm">
+      <input type="text" id="siteLabel" placeholder="Batch name (optional)">
+      <div class="actions">
+        <button type="button" id="siteUpload" class="primary small-btn">Score sites</button>
+        <button type="button" id="siteClear" class="ghost small-btn">Clear</button>
+      </div>
+      <div id="batchList" class="layer-list"><span class="muted small">…</span></div>
+      <p class="hint" id="uploadNote"></p>
+    </section>
+
+    <section data-group="Overlay">
+      <h2>POI overlay</h2>
+      <label class="fieldlabel" for="poiSource">Source</label>
+      <select id="poiSource">
+        {% for key, s in sources.items() %}
+        <option value="{{ key }}" {{ 'selected' if key == default_source }}>{{ s.label }}</option>
+        {% endfor %}
+      </select>
+      <p class="hint" id="sourceNote"></p>
+
+      <label class="fieldlabel" for="poiCategory">Category</label>
+      <select id="poiCategory"><option value="">All categories</option></select>
+
+      <label class="fieldlabel" for="poiBrand">Brand</label>
+      <select id="poiBrand"><option value="">All brands</option></select>
+
+      <label class="fieldlabel" for="poiMc">Microcluster</label>
+      <select id="poiMc"><option value="">All microclusters</option></select>
+
+      <div id="styleBox" class="stylebox"></div>
+
+      <div class="actions">
+        <button type="button" id="poiApply" class="primary small-btn">Apply overlay</button>
+        <button type="button" id="poiOff" class="ghost small-btn">Hide POIs</button>
+      </div>
+    </section>
+
+    <section data-group="Overlay">
+      <h2>Boundaries</h2>
+      <div id="boundaryList" class="layer-list"><span class="muted small">…</span></div>
+    </section>
+
+    <section data-group="Overlay">
+      <h2>Service points</h2>
+      <div id="operatorList" class="layer-list"><span class="muted small">…</span></div>
+    </section>
+
+    <div class="side-run">
+      <button type="button" id="runModel" class="primary small-btn">Run model</button>
+      <button type="button" id="resetModel" class="ghost small-btn">Reset</button>
+      <a id="xlsxLink" class="primary small-btn dlbtn" href="#">Download Excel analysis</a>
+      <p class="runnote">Run applies every parameter on the Model tab and
+        redraws the ranking, the choropleth and the summary line. The workbook
+        exports the parameters as set, not the defaults.</p>
+    </div>
+  </aside>
+
+  <main class="terr-main">
+    <div class="cfgbar" id="cfgbar"></div>
+    <div id="map"></div>
+    <div id="legend" class="maplegend"></div>
+
+    <section class="results-block">
+      <div class="results-head">
+        <div class="rtabs">
+          <button type="button" class="rtab on" data-pane="tabKec">Ranked kecamatan</button>
+          <button type="button" class="rtab" data-pane="tabCand">Candidate sites</button>
+          <button type="button" class="rtab" data-pane="paneSel">Score breakdown</button>
+          <button type="button" class="rtab" data-pane="paneAudit">Model audit</button>
+        </div>
+        <span class="muted small" id="rankTotal"></span>
+      </div>
+      <div class="rpane" id="tabKec"><span class="muted small">Run the model to see the ranking.</span></div>
+      <div class="rpane" id="tabCand" hidden><span class="muted small">No candidate batch loaded.</span></div>
+      <div class="rpane" id="paneSel" hidden>
+        <div class="terr-panel" id="panel">
+          <div class="panel-empty muted">
+            Click a kecamatan on the map, or a row in the ranking, to see how
+            its score was built.
+          </div>
+        </div>
+      </div>
+      <div class="rpane" id="paneAudit" hidden>
+        <div id="availBox" class="gatebox"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="modal" class="modal" hidden>
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 id="modalTitle">—</h3>
+      <button type="button" id="modalClose" class="ghost small-btn">Close</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  window.TERR = {
+    lat: {{ lat }}, lon: {{ lon }},
+    operators: {{ operators | tojson }},
+    styles: {{ styles | tojson }},
+    sources: {{ sources | tojson }},
+    mode: "retail"
+  };
+</script>
+<script src="{{ url_for('static', filename='js/territory.js') }}"></script>
+<script src="{{ url_for('static', filename='js/future.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ruler.js') }}"></script>
+<script src="{{ url_for('static', filename='js/sidetabs.js') }}"></script>
+</body>
+</html>

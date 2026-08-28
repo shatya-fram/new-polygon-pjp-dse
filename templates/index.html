@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="layout">
+  <aside class="panel">
+
+    {% if not db_ready %}
+    <div class="setup-hint">
+      <strong>No data yet.</strong>
+      <div class="mono small">python migrate.py<br>python pull_overture.py --all</div>
+    </div>
+    {% endif %}
+
+    <section class="field" data-group="Filter">
+      <label>Connection</label>
+      <div class="tabs">
+        <button type="button" class="tab active" data-source="unified">
+          Unified <span class="cnt">{{ '{:,}'.format(row_counts.get('poi_unified') or 0) }}</span>
+        </button>
+        <button type="button" class="tab" data-source="overture">
+          Overture <span class="cnt">{{ '{:,}'.format(row_counts.get('poi_overture') or 0) }}</span>
+        </button>
+        <button type="button" class="tab" data-source="google">
+          Google <span class="cnt">{{ '{:,}'.format(row_counts.get('poi_google') or 0) }}</span>
+        </button>
+        <button type="button" class="tab" data-source="osm">
+          OSM <span class="cnt">{{ '{:,}'.format(row_counts.get('poi_osm') or 0) }}</span>
+        </button>
+
+      </div>
+      <p class="hint"><strong>Unified</strong> is the default: one row per
+        real-world place, the winner chosen per category by
+        <code>reconcile.py</code>. The three source tables behind it are kept
+        whole and unedited &mdash; switch to any of them to see the raw
+        records, including the ones the reconciler set aside.</p>
+    </section>
+
+    <section class="field" data-group="Filter">
+      <label for="fCategory">Category</label>
+      <select id="fCategory"><option value="">All</option></select>
+    </section>
+
+    <section class="field" data-group="Filter">
+      <label for="fBrand">Brand</label>
+      <select id="fBrand"><option value="">All</option></select>
+    </section>
+
+    <section class="field" data-group="Filter">
+      <label for="fName">Name contains</label>
+      <input type="text" id="fName" placeholder="e.g. KCP, Terminal, Blok A">
+    </section>
+
+    <section class="field" data-group="Recent pulls">
+      <label>Recent pulls</label>
+      <div id="runs" class="runs"><span class="muted small">—</span></div>
+    </section>
+
+    <div class="side-run">
+      <button type="button" id="applyBtn" class="primary small-btn">Apply configuration</button>
+      <button type="button" id="csvBtn" class="ghost small-btn">CSV</button>
+      <button type="button" id="geoBtn" class="ghost small-btn">GeoJSON</button>
+      <p class="runnote">Applies the filter above to the map, the table and the
+        summary line.</p>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="cfgbar" id="cfgbar"></div>
+    <div id="map"></div>
+    <div class="results">
+      <div class="results-head">
+        <div id="summary" class="summary muted">Loading…</div>
+        <input type="text" id="tableFilter" class="table-filter" placeholder="Filter rows…">
+      </div>
+      <div class="table-wrap">
+        <table id="resultsTable">
+          <thead><tr>
+            {% for key, label in columns %}<th data-key="{{ key }}">{{ label }}</th>{% endfor %}
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="busy" class="busy" hidden>
+  <div class="busy-card"><div class="spinner"></div><div id="busyText">Loading…</div></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.APP = {
+    columns: {{ columns | tojson }},
+    lat: {{ default_lat }}, lon: {{ default_lon }},
+    aoi: {{ aoi | tojson }},
+    dbReady: {{ 'true' if db_ready else 'false' }}
+  };
+</script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script src="{{ url_for('static', filename='js/sidetabs.js') }}"></script>
+{% endblock %}

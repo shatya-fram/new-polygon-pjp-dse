@@ -1,0 +1,10 @@
+# What the shared instance actually needs.
+#
+# duckdb is deliberately absent. It is a 60 MB dependency used only by the
+# Overture pull, which the public instance never runs -- PUBLIC_MODE refuses
+# every write. Leaving it out makes the virtualenv small enough to build on
+# the cheapest Hetzner box without a long compile.
+Flask>=3.0,<4
+openpyxl>=3.1.5
+python-dotenv>=1.0
+gunicorn>=22.0

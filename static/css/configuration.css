@@ -1,0 +1,225 @@
+/* Configuration and Layer Model.
+
+   Not one new colour. Every value below is a token already defined in
+   style.css, so both pages follow the theme switch for free and there is
+   still exactly one place a colour is decided. */
+
+/* ── Configuration ──────────────────────────────────────────────────── */
+.cfg-top {
+  display: grid; grid-template-columns: 340px 1fr; gap: 14px;
+  margin-bottom: 16px;
+}
+.cfg-store, .cfg-ready {
+  border: 1px solid var(--line-2); border-radius: var(--radius);
+  padding: 12px 14px; background: var(--panel);
+}
+.cfg-store h2, .cfg-ready h2, .cfg-req h2, .cfg-side h2 {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--muted); margin: 0 0 8px; font-weight: 600;
+}
+.cfg-storeline { display: flex; align-items: baseline; gap: 8px; }
+.cfg-storeline .mono { font-size: 13px; }
+
+.cfg-pages { display: flex; flex-wrap: wrap; gap: 8px; }
+.cfg-page {
+  border: 1px solid var(--line-2); border-radius: 7px; padding: 8px 11px;
+  background: var(--wash-1); min-width: 190px; text-decoration: none;
+  color: inherit; display: block;
+}
+.cfg-page:hover { border-color: var(--line-4); background: var(--wash-3); }
+.cfg-page b { display: block; font-size: 13px; color: var(--text-hi); }
+.cfg-page span { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
+.cfg-page.ready { border-left: 3px solid var(--good-3); }
+.cfg-page.blocked { border-left: 3px solid var(--warn); }
+
+.cfg-grid { display: grid; grid-template-columns: 1fr 380px; gap: 16px; align-items: start; }
+.cfg-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+
+.cfg-tier { margin-bottom: 18px; }
+.cfg-tierhead { display: flex; align-items: baseline; gap: 10px; margin-bottom: 7px; }
+.cfg-tiername {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .09em;
+  color: var(--text-2); border: 1px solid var(--line-3); border-radius: 5px;
+  padding: 2px 8px; background: var(--wash-2);
+}
+
+.cfg-card {
+  border: 1px solid var(--line-2); border-radius: var(--radius);
+  padding: 11px 13px; background: var(--wash-1); margin-bottom: 8px;
+  border-left: 4px solid var(--line-3);
+}
+.cfg-card.loaded { border-left-color: var(--good-3); }
+.cfg-card.missing { border-left-color: var(--warn); }
+.cfg-cardhead { display: flex; align-items: center; gap: 8px; }
+.cfg-cardhead h3 { margin: 0; font-size: 14px; flex: 1 1 auto; color: var(--text-hi); }
+.cfg-dot {
+  width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto;
+  background: var(--muted-2);
+}
+.cfg-dot[data-state="loaded"]  { background: var(--good-3); }
+.cfg-dot[data-state="missing"] { background: var(--warn); }
+.cfg-state { font-size: 10.5px; }
+.cfg-state.ok  { color: var(--ok); border-color: rgba(62,201,138,.35); }
+.cfg-state.off { color: var(--warn); border-color: rgba(230,180,80,.35); }
+
+.cfg-why { margin: 4px 0 8px; font-size: 12px; color: var(--muted); line-height: 1.5; }
+.cfg-fields { display: flex; gap: 8px; align-items: baseline; margin-bottom: 3px; }
+.cfg-lab {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .07em;
+  color: var(--muted-2); width: 54px; flex: 0 0 auto;
+}
+.cfg-stat { margin: 7px 0 9px; font-variant-numeric: tabular-nums; }
+.cfg-actions { display: flex; gap: 8px; align-items: center; }
+.cfg-actions a.rtab { text-decoration: none; }
+
+.cfg-side { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 14px; }
+.cfg-side .fm-upload, .cfg-side .fm-list {
+  border: 1px solid var(--line-2); border-radius: var(--radius);
+  padding: 12px 14px; background: var(--panel);
+}
+.cfg-side select { width: 100%; margin-bottom: 10px; }
+.cfg-side .drop { margin-bottom: 10px; }
+.cfg-file {
+  display: flex; align-items: center; gap: 8px; padding: 7px 0;
+  border-bottom: 1px solid var(--line-1); font-size: 12.5px;
+}
+.cfg-file:last-child { border-bottom: none; }
+.cfg-file .nm { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cfg-file .n { color: var(--muted-2); font-size: 11px; font-variant-numeric: tabular-nums; }
+.cfg-file .tag {
+  font-size: 10px; padding: 1px 7px; border-radius: 999px;
+  border: 1px solid var(--line-3); color: var(--muted);
+}
+.cfg-file .tag.on { color: var(--good-3); border-color: var(--good-line); }
+
+/* ── Layer Model ────────────────────────────────────────────────────── */
+.lm-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 16px; }
+.lm-head h1 { margin: 0 0 4px; font-size: 20px; font-weight: 600; letter-spacing: -.01em; }
+.lm-head .hint { max-width: 640px; margin: 0; }
+.lm-score { display: flex; gap: 8px; flex: 0 0 auto; }
+.lm-score .counter { min-width: 96px; }
+
+.lm-grid { display: grid; grid-template-columns: 1fr 340px; gap: 16px; align-items: start; }
+.lm-stack { display: flex; flex-direction: column; gap: 10px; }
+
+.lm-plane {
+  border: 1px solid var(--line-2); border-radius: var(--radius);
+  background: var(--wash-1); padding: 12px 14px;
+}
+.lm-plane.analysis { border-color: var(--line-3); background: rgba(53,208,224,.05); }
+.lm-plane.base { background: rgba(75,150,243,.04); }
+.lm-planehead { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.lm-planehead h2 { margin: 0; font-size: 13px; font-weight: 600; color: var(--text-hi);
+  text-transform: none; letter-spacing: 0; }
+.lm-planehead .muted { flex: 1 1 auto; }
+
+.lm-items { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px; }
+.lm-item {
+  border: 1px solid var(--line-2); border-radius: 7px; padding: 9px 11px;
+  background: var(--panel);
+}
+.lm-item.off { opacity: .55; border-style: dashed; }
+.lm-item b { display: block; font-size: 12.5px; color: var(--text-hi); }
+.lm-item .n { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.lm-item .l { font-size: 11px; color: var(--muted); }
+.lm-item .f { font-size: 10.5px; color: var(--muted-2); margin-top: 4px;
+  font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.lm-side { display: flex; flex-direction: column; gap: 14px; }
+.lm-ref, .lm-rules, .lm-extra {
+  border: 1px solid var(--line-2); border-radius: var(--radius);
+  padding: 12px 14px; background: var(--panel);
+}
+.lm-ref h2, .lm-rules h2, .lm-extra h2, .lm-orderhead h2 {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--muted); margin: 0 0 8px; font-weight: 600;
+}
+.lm-rule { margin-bottom: 10px; }
+.lm-rule:last-child { margin-bottom: 0; }
+.lm-rule .n { font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted-2); }
+.lm-rule b { display: block; font-size: 12.5px; color: var(--text-hi); margin: 1px 0 2px; }
+.lm-rule p { margin: 0; font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+
+.lm-order { margin-top: 16px; }
+.lm-orderhead { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+.lm-orderrail { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.lm-chip {
+  font-size: 11px; padding: 3px 9px; border-radius: 6px; white-space: nowrap;
+  background: var(--wash-3); border: 1px solid var(--line-3); color: var(--text-2);
+}
+.lm-chip.over { background: var(--panel-2); border-style: dashed; color: var(--muted); }
+.lm-chip.off { opacity: .45; }
+.lm-chip.sep { background: none; border: none; color: var(--muted-2); padding: 3px 2px; }
+
+.lm-extra { margin-top: 16px; }
+
+@media (max-width: 1180px) {
+  .cfg-grid, .lm-grid, .cfg-top { grid-template-columns: 1fr; }
+  .cfg-side { position: static; }
+}
+
+/* A derivation prints its own evidence — the cross-check against the mapping
+   Indosat ships. Showing that log is the point: the step is only trustworthy
+   because it says how far it agrees. */
+.cfg-derive { border-left-color: var(--pick); }
+.cfg-derive.done { border-left-color: var(--good-3); }
+.cfg-derive.blocked { border-left-color: var(--line-3); }
+.cfg-log {
+  margin: 10px 0 0; padding: 9px 11px; max-height: 220px; overflow: auto;
+  background: var(--inset); border: 1px solid var(--line-2);
+  border-radius: 6px; font-family: var(--mono); font-size: 11px;
+  color: var(--text-2); white-space: pre-wrap; line-height: 1.5;
+}
+
+/* Four named slots, each holding the files that make it up. The slot is what
+   somebody uploads against; the cards inside are what it is still waiting
+   for. A slot that could only say "incomplete" would be no help at all. */
+.cfg-slot { margin-bottom: 20px; }
+.cfg-slothead {
+  display: flex; align-items: baseline; gap: 10px;
+  border-bottom: 1px solid var(--line-2); padding-bottom: 6px; margin-bottom: 4px;
+}
+.cfg-slothead h3 {
+  margin: 0; font-size: 14px; font-weight: 600; color: var(--text-hi);
+  flex: 1 1 auto; letter-spacing: -.005em;
+}
+.cfg-slotcount {
+  font-size: 10.5px; padding: 2px 8px; border-radius: 999px;
+  border: 1px solid var(--line-3); color: var(--muted); white-space: nowrap;
+}
+.cfg-slotcount.ok { color: var(--ok); border-color: rgba(62,201,138,.35); }
+.cfg-slotcount.part { color: var(--warn); border-color: rgba(230,180,80,.35); }
+.cfg-slotnote {
+  margin: 0 0 9px; font-size: 11.5px; color: var(--muted); line-height: 1.5;
+}
+.cfg-cardhead h4 {
+  margin: 0; font-size: 13.5px; flex: 1 1 auto; color: var(--text-hi);
+  font-weight: 600;
+}
+
+
+/* Sample overlays. A kept sample is somebody's file that everyone now sees,
+   so removing one is deliberate: the PIN box sits with the row it removes
+   rather than in a dialogue that could be aimed at the wrong one. */
+.smpcfg .hint { margin: 4px 0 8px; }
+.smprow .sub { margin-top: 2px; }
+.smpdel { display: flex; gap: 6px; margin-top: 7px; }
+.smpdel input { flex: 0 1 150px; background: var(--well);
+  border: 1px solid var(--line-3); border-radius: 4px; padding: 4px 7px;
+  color: var(--text-hi); font: inherit; font-size: 11.5px;
+  letter-spacing: .18em; }
+.smpdel input:focus { outline: none; border-color: #ef8073; }
+.smpdel button { background: none; border: 1px solid var(--line-3);
+  color: var(--text-2); border-radius: 4px; padding: 4px 10px;
+  font: inherit; font-size: 11.5px; cursor: pointer; }
+.smpdel button:hover { color: #ef8073; border-color: #ef8073; }
+.smpdel button:disabled { opacity: .6; cursor: default; }
+.fm-msg.bad { color: #ef8073; }
+
+
+/* Read-only instance. The drop zone stops inviting a file rather than
+   accepting one and refusing it a second later. */
+.drop.off { cursor: default; border-style: solid; opacity: .75; }
+.drop.off:hover { border-color: var(--line-3); background: var(--well); }
+body.readonly select:disabled,
+body.readonly button:disabled { opacity: .5; cursor: not-allowed; }

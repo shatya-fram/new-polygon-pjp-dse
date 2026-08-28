@@ -1,0 +1,415 @@
+/* ── PALETTE ────────────────────────────────────────────────────────────
+   Every colour in this application comes from here. That was not true a
+   moment ago -- two hundred hex literals were scattered through the
+   stylesheets -- and it had to become true before a second theme was
+   possible at all: you cannot restate a palette that has no single
+   definition.
+
+   The dark values below are what the application already looked like:
+   rendered side by side, 98.4% of pixels are identical and the rest differ
+   by one to four steps out of 255, where two near-identical greys were
+   deliberately collapsed onto one token. The light block restates the same
+   ROLES against a pale surface. Roles, not colours: --sunk is
+   "further back than the page", which is darker on a dark theme and lighter
+   on a light one, and every rule that asks for it gets the right answer in
+   both. The tokens that must NOT flip are named so: --on-bright is ink on a
+   deliberately bright chip, --flip-* is the always-pale overlay that sits on
+   a light basemap. Those stay put in both themes, because the surface they
+   sit on stays put. */
+:root {
+  --bg: #0f1115;
+  --panel: #161a21;
+  --panel-2: #1c212a;
+  --panel-3: #1a1f2b;
+  --sunk: #0f1219;
+  /* Three steps below the panel, and they are not interchangeable: --well is
+     the map canvas, which should read as a hole cut in the page; --inset is
+     a sunken cell inside a panel (the readout tiles); --thead is a sticky
+     header that must stay legible with rows scrolling under it. Collapsing
+     them onto one value shifted several large surfaces by a few steps --
+     invisible individually, but it made the map well lighter than the page
+     it sits in, which is backwards. */
+  --well: #0b0e14;       /* map canvas: a hole cut in the page */
+  --map-bg: #11141c;     /* the smaller embedded map */
+  --card: #12151d;       /* a raised card or modal */
+  --inset: #141922;      /* a sunken cell inside a panel */
+  --legend-bg: #10141d;  /* the strip under a map */
+  --thead: #1a1e27;      /* sticky table header */
+  --tfoot: #161a24;      /* sticky table total */
+  --line-1: #1c2029;     /* the faintest hairline */
+  --line: #262d38;
+  --line-2: #23293a;
+  --line-3: #2c3346;
+  --line-4: #3a4260;
+  --text: #e6e9ef;
+  --text-hi: #e8ecf6;
+  --text-2: #c8cde0;
+  --text-3: #b3bccc;
+  --muted: #8b94a5;
+  --muted-2: #6f7789;
+  --accent: #4b96f3;
+  --accent-2: #2f7de0;
+  --accent-ink: #8fbdf8;
+  --ok: #3ec98a;
+  --warn: #e6b450;
+  --danger: #e5695f;
+  --overture: #7c5cff;
+  --google: #4b96f3;
+
+  /* Semantic inks, and the hairlines that go with them. */
+  /* A semantic colour has two jobs and they pull in opposite directions:
+     as INK it must be far from the page, as FILL it must be far from the ink
+     printed on it. On a dark page one value can do both -- pale gold reads
+     on near-black and near-black reads on pale gold. On a light page it
+     cannot: gold dark enough to read as text is too dark to print black on.
+     So each is split, and the ink that sits on the fill is named too. */
+  --gold: #f0d04b;      --gold-2: #c8933f;   --gold-line: #6b5c1f;
+  --gold-fill: #f0d04b; --on-gold: #0f1219;
+  --pick-fill: #35d0e0; --on-pick: #0f1219;
+  --rust: #d9744b;      --rust-ink: #ffb499; --rust-line: #5a3226;
+  --good: #9ad89a;      --good-2: #cfe8cf;   --good-3: #6ec46e;
+  --good-line: #2f5c3a;
+  --bad: #e0a68d;
+  --warn-ink: #e8c9a8;  --warn-line: #6b4a2a; --warn-bg: #241f14;
+  --pick: #35d0e0;      --pick-bg: #223047;
+
+  /* Translucent lifts. On dark they lighten; on light they darken -- which
+     is why they are tokens and not a literal white with an alpha. */
+  --wash-1: rgba(255,255,255,.02);
+  --wash-2: rgba(255,255,255,.04);
+  --wash-3: rgba(255,255,255,.06);
+  --wash-4: rgba(255,255,255,.08);
+  --wash-5: rgba(255,255,255,.35);
+  --scrim: rgba(6,8,12,.72);
+  --tip-bg: rgba(14,17,24,.95);
+
+  /* Fixed in both themes -- see the note above. */
+  --on-bright: #0f1219;
+  --flip-bg: #f4f6fa;
+  --flip-ink: #1d2330;
+  --flip-muted: #5b6478;
+  --flip-line: #c8cde0;
+
+  --radius: 8px;
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* ── LIGHT ──────────────────────────────────────────────────────────────
+   Opt-in per page: only a page that stamps data-theme="light" on <body>
+   picks this up, so adding the toggle to one page could not disturb the
+   others. Contrast was the constraint, not prettiness -- the semantic inks
+   are the ones that needed real work, because a pale gold that reads well on
+   near-black is invisible on near-white. Each is restepped, not merely
+   darkened, so "gold" still reads as gold. */
+/* THE TOKENS GO ON <html>, NOT ONLY ON <body>
+   Both elements paint var(--bg) — see the `html, body` rule below — and body
+   is height:100%. Scoping the light palette to the body alone therefore left
+   <html> holding the DARK --bg, and every pixel past the first viewport
+   height showed that dark canvas behind the transparent table rows. The page
+   looked half-converted, which is exactly what it was.
+
+   Two selectors, one palette. The first is what the inline boot script in
+   <head> sets before <body> exists, and it lands on the root so everything
+   inherits; the second is what js/theme.js stamps on the body afterwards.
+   theme.js keeps both in step, so they can never disagree — and the page
+   never paints dark and flips. */
+html[data-boot-theme="light"],
+body[data-theme="light"] {
+  --bg: #f4f5f8;
+  --panel: #ffffff;
+  --panel-2: #f7f8fb;
+  --panel-3: #eef0f5;
+  --sunk: #e7e9f0;
+  --well: #dfe2ea;
+  --map-bg: #e4e7ee;
+  --card: #ffffff;
+  --inset: #f2f4f8;
+  --legend-bg: #f0f2f7;
+  --thead: #f0f2f7;
+  --tfoot: #eceff5;
+  --line-1: #e4e7ee;
+  --line: #d8dce6;
+  --line-2: #e2e5ed;
+  --line-3: #cdd2de;
+  --line-4: #b4bbcb;
+  --text: #1a1e28;
+  --text-hi: #0d1017;
+  --text-2: #3a4152;
+  --text-3: #4d5567;
+  --muted: #5c6376;
+  --muted-2: #767e91;
+  --accent: #1f6fd0;
+  --accent-2: #1a5cb0;
+  --accent-ink: #14549e;
+  --ok: #12855a;
+  --warn: #9a6a10;
+  --danger: #c0392f;
+  --overture: #5a3ee0;
+  --google: #1f6fd0;
+
+  --gold: #8a6a06;      --gold-2: #7a5a10;   --gold-line: #d8c98a;
+  /* The fill keeps its brightness -- it is a highlight, and a dark-olive
+     "selected" chip would not look selected -- while the ink on it stays
+     dark, which is the pairing that measures well in both themes. */
+  --gold-fill: #e8c33a; --on-gold: #1a1400;
+  --pick-fill: #0e7f8c; --on-pick: #ffffff;
+  --rust: #b04a20;      --rust-ink: #8a3812; --rust-line: #e2b8a4;
+  --good: #12754a;      --good-2: #0f6340;   --good-3: #178a56;
+  --good-line: #a8d6bc;
+  --bad: #b04a20;
+  --warn-ink: #7a5a10;  --warn-line: #e0cfa8; --warn-bg: #fdf6e3;
+  --pick: #0e7f8c;      --pick-bg: #d9e6f7;
+
+  --wash-1: rgba(15,18,25,.02);
+  --wash-2: rgba(15,18,25,.04);
+  --wash-3: rgba(15,18,25,.06);
+  --wash-4: rgba(15,18,25,.09);
+  --wash-5: rgba(15,18,25,.30);
+  --scrim: rgba(240,242,247,.82);
+  --tip-bg: rgba(255,255,255,.97);
+}
+
+* { box-sizing: border-box; }
+
+/* `display:` on a component overrides the `hidden` attribute's UA default,
+   which silently leaves invisible overlays intercepting clicks. Pin it. */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0; height: 100%;
+  background: var(--bg); color: var(--text);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ───────────────────────────── topbar ───────────────────────────── */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; background: var(--panel);
+  border-bottom: 1px solid var(--line); height: 52px;
+}
+.brand { display: flex; align-items: center; gap: 9px; }
+.brand .dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--google), var(--overture));
+}
+.brand .sub { color: var(--muted); font-size: 12px; }
+.status { display: flex; gap: 8px; }
+.pill {
+  font-size: 11px; padding: 3px 9px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--muted);
+}
+.pill.ok { color: var(--ok); border-color: rgba(62,201,138,.35); }
+.pill.off { color: var(--warn); border-color: rgba(230,180,80,.35); }
+
+/* ───────────────────────────── layout ───────────────────────────── */
+.layout {
+  display: grid; grid-template-columns: 320px 1fr;
+  height: calc(100% - 52px);
+}
+.panel {
+  background: var(--panel); border-right: 1px solid var(--line);
+  overflow-y: auto; padding: 14px;
+}
+/* Overview All is map-led: the table is the reference, the map is
+   the thing being read. 45/55 made the map the smaller half. */
+.main { display: grid; grid-template-rows: auto 1fr 230px; min-width: 0; }
+#map { width: 100%; height: 100%; background: var(--well); }
+#map.map-off {
+  display: flex; align-items: center; justify-content: center;
+  text-align: center; color: var(--muted); padding: 20px;
+}
+.map-fallback { max-width: 460px; }
+
+/* ───────────────────────────── form ───────────────────────────── */
+.field { margin-bottom: 16px; }
+.field > label {
+  display: block; font-size: 12px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .04em;
+  color: var(--muted); margin-bottom: 6px;
+}
+.row { display: flex; gap: 6px; }
+input[type=text] {
+  width: 100%; padding: 7px 9px; border-radius: var(--radius);
+  border: 1px solid var(--line); background: var(--panel-2);
+  color: var(--text); font-size: 13px;
+}
+input[type=text]:focus { outline: none; border-color: var(--accent); }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+
+.group { margin-bottom: 10px; }
+.group-title {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted-2); margin: 6px 0 3px;
+}
+.chk {
+  display: flex; align-items: center; gap: 7px;
+  padding: 3px 0; font-size: 13px; cursor: pointer;
+}
+.chk.disabled { opacity: .45; cursor: not-allowed; }
+.chk input { accent-color: var(--accent); }
+.warn-dot {
+  width: 14px; height: 14px; border-radius: 50%; font-size: 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: rgba(230,180,80,.18); color: var(--warn); cursor: help;
+}
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.hint { font-size: 11px; color: var(--muted); margin: 5px 0 0; }
+.mono { font-family: var(--mono); color: var(--text); }
+
+.advanced summary {
+  cursor: pointer; font-size: 12px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
+}
+.advanced[open] summary { margin-bottom: 8px; }
+
+.actions { display: flex; gap: 8px; position: sticky; bottom: 0;
+  background: var(--panel); padding-top: 10px; }
+button {
+  padding: 8px 14px; border-radius: var(--radius); font-size: 13px;
+  cursor: pointer; border: 1px solid var(--line); font-weight: 500;
+}
+button.primary { background: var(--accent); border-color: var(--accent-2);
+  color: #fff; flex: 1; }
+button.primary:hover { background: var(--accent-2); }
+button.ghost { background: var(--panel-2); color: var(--text); }
+button.ghost:hover { border-color: var(--accent); }
+button:disabled { opacity: .5; cursor: not-allowed; }
+
+.geo-results {
+  margin-top: 6px; border: 1px solid var(--line);
+  border-radius: var(--radius); overflow: hidden;
+}
+.geo-results div {
+  padding: 6px 9px; font-size: 12px; cursor: pointer;
+  border-bottom: 1px solid var(--line);
+}
+.geo-results div:last-child { border-bottom: none; }
+.geo-results div:hover { background: var(--panel-2); }
+
+/* ───────────────────────────── results ───────────────────────────── */
+.results {
+  border-top: 1px solid var(--line); display: flex; flex-direction: column;
+  min-height: 0; background: var(--panel);
+}
+.results-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line);
+}
+.summary { font-size: 13px; }
+.table-filter { max-width: 220px; }
+.meta-strip {
+  display: flex; gap: 8px; flex-wrap: wrap; padding: 0 12px;
+  font-size: 11px; color: var(--muted);
+}
+.meta-strip:not(:empty) { padding: 7px 12px; border-bottom: 1px solid var(--line); }
+.meta-chip {
+  padding: 2px 8px; border-radius: 4px; background: var(--panel-2);
+  border: 1px solid var(--line);
+}
+.meta-chip.err { color: var(--danger); border-color: rgba(229,105,95,.4); }
+.meta-chip.warn { color: var(--warn); border-color: rgba(230,180,80,.4); }
+
+.table-wrap { overflow: auto; flex: 1; min-height: 0; }
+table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+thead th {
+  position: sticky; top: 0; background: var(--panel-2); z-index: 2;
+  text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--line);
+  white-space: nowrap; cursor: pointer; user-select: none; font-weight: 600;
+}
+thead th:hover { color: var(--accent); }
+thead th.sorted::after { content: " \25B2"; font-size: 9px; }
+thead th.sorted.desc::after { content: " \25BC"; }
+tbody td {
+  padding: 6px 9px; border-bottom: 1px solid var(--panel-3);
+  white-space: nowrap; max-width: 280px; overflow: hidden;
+  text-overflow: ellipsis;
+}
+tbody tr:hover { background: var(--wash-2); }
+tbody tr.active { background: var(--pick-bg); }
+.src-badge {
+  font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 600;
+}
+.src-overture { background: rgba(124,92,255,.16); color: #a894ff; }
+.src-google { background: rgba(75,150,243,.16); color: #7fb4f7; }
+.src-osm { background: rgba(110,196,110,.16); color: #86d386; }
+.src-reconcile, .src-unified { background: rgba(240,208,75,.16); color: #e3c85f; }
+.empty { padding: 24px; text-align: center; color: var(--muted); }
+
+/* ───────────────────────────── busy ───────────────────────────── */
+.busy {
+  position: fixed; inset: 0; background: var(--scrim);
+  display: flex; align-items: center; justify-content: center; z-index: 9999;
+}
+.busy-card {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 12px; padding: 22px 30px; text-align: center;
+}
+.spinner {
+  width: 26px; height: 26px; margin: 0 auto 10px;
+  border: 3px solid var(--line); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+  background: var(--panel); color: var(--text);
+}
+.leaflet-popup-content { font-size: 12.5px; }
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .panel { border-right: none; border-bottom: 1px solid var(--line); max-height: 45vh; }
+}
+
+/* ── API Location Pulldown additions ──────────────────────────────── */
+.tabs { display: flex; gap: 6px; }
+.tab {
+  flex: 1; padding: 7px 6px; font-size: 13px; border-radius: var(--radius);
+  background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+}
+.tab.active { border-color: var(--accent); color: #fff; background: #1d2a3d; }
+.tab .cnt { color: var(--muted); font-size: 11px; margin-left: 4px; }
+select {
+  width: 100%; padding: 7px 9px; border-radius: var(--radius);
+  border: 1px solid var(--line); background: var(--panel-2);
+  color: var(--text); font-size: 13px;
+}
+.setup-hint {
+  background: var(--warn-bg); border: 1px solid rgba(230,180,80,.35);
+  border-radius: var(--radius); padding: 10px 12px; margin-bottom: 14px;
+  font-size: 13px;
+}
+.setup-hint .mono { color: var(--warn); margin-top: 6px; display: block; }
+.runs .run {
+  padding: 6px 0; border-bottom: 1px solid var(--panel-3); font-size: 12px;
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline;
+}
+.runs .run:last-child { border-bottom: none; }
+
+/* Grid/flex children default to min-height:auto, which refuses to shrink
+   below their content — so a long results table pushes the whole layout
+   past the viewport and the map scrolls off-screen. Pin them to 0 and let
+   the table-wrap do the scrolling. */
+.layout { overflow: hidden; }
+.layout > * { min-height: 0; min-width: 0; }
+.panel { overflow-y: auto; }
+.main { min-height: 0; overflow: hidden; }
+.main > #map { min-height: 0; overflow: hidden; }
+.main > .results { min-height: 0; overflow: hidden; }
+.results > .table-wrap { min-height: 0; }
+
+.navlink { margin-left: 18px; font-size: 12px; text-decoration: none;
+           color: var(--muted); border: 1px solid var(--line-2); border-radius: 6px;
+           padding: 3px 9px; }
+.navlink:hover { color: var(--text-hi); border-color: var(--line-4); }
+
+/* shared nav in the app header */
+.mainnav { display: flex; gap: 4px; margin-left: 20px; }
+.mainnav a {
+  font-size: 12.5px; text-decoration: none; color: var(--muted);
+  padding: 4px 11px; border-radius: 6px; border: 1px solid transparent;
+  white-space: nowrap;
+}
+.mainnav a:hover { color: var(--text-hi); background: var(--wash-2); }
+.mainnav a.on { color: var(--text-hi); background: var(--wash-4); border-color: var(--line-3); }
