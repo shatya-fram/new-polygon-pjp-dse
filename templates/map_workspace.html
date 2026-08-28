@@ -316,6 +316,26 @@
            IDs are under two DSE" and "32 outlets are double covered" are
            not the same sentence, and only one of them is true of this
            file. Each row opens the rows behind it in the table. -->
+      <!-- HOW MANY OUTLETS ARE OUT OF BOUNDARIES, ACROSS THE WHOLE FILE
+           The PJP review tab answers this for one rep. This answers it for
+           every rep at once — the question a supervisor asks before
+           deciding where to spend a demarcation review. Same thresholds,
+           same measure, same flag text; they share the same functions so
+           the two can never drift apart. -->
+      <div class="cell" id="dbBoundsWrap">
+        <div class="mw-slabhead">
+          <span class="k">Outlets out of boundaries</span>
+          <span class="mw-dgap"></span>
+          <button type="button" class="nb" id="dbBoundsRun">Re-run</button>
+          <button type="button" class="nb on" id="dbBoundsCsv" disabled>Download CSV</button>
+        </div>
+        <div class="mw-dupetitle">Urban 1.5&nbsp;km &middot; rural 4&nbsp;km,
+          measured to the rep&rsquo;s own nearest outlet</div>
+        <div id="dbBounds">
+          <div class="mw-note">Connect local data to run this review.</div>
+        </div>
+      </div>
+
       <div class="cell" id="dbDupeWrap">
         <span class="k">Outlet identity check</span>
         <div class="mw-dupetitle">Is any outlet ID carried by two different DSE?</div>

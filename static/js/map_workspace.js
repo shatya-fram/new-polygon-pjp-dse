@@ -1337,6 +1337,179 @@
   /* The dashboard panel. Severity order, not size order: the row that can
      cost somebody a wasted trip is first even when it is the smallest
      number on the list. */
+  /* ── THE BOUNDARY SUMMARY ON THE DASHBOARD ──────────────────────────
+     Counts first, then the worst dozen, then the whole thing as a CSV.
+     A supervisor reading this wants to know how big the problem is before
+     they want to know which outlets it is. */
+  function boundsCsv() {
+    if (!BOUNDS) return;
+    function q(v) {
+      var t = String(v == null ? "" : v);
+      return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+    }
+    var head = ["Outlet Code", "Outlet Name", "Brand",
+                "DSE Code", "UNIKDSE", "Supervisor",
+                "Desa / Kelurahan", "Kecamatan", "City / Kabupaten",
+                "Microcluster", "Region", "Area", "Sales Area / Branch",
+                "Territory",
+                "Stratum", "People per km2", "Allowed km",
+                "Km to nearest own outlet", "Flag",
+                "Recommended DSE", "Km to recommended",
+                "Outlets after move", "Stands inside border of",
+                "Latitude", "Longitude"];
+    var body = BOUNDS.rows.map(function (r) {
+      return [r.code, r.name, r.brand,
+              r.dse, r.unik, r.spv,
+              r.desa, r.kec, r.kab,
+              r.mc, r.region, r.area, r.branch, r.terr,
+              r.stratum, r.known ? Math.round(r.density) : "",
+              r.lim, r.kmOwn.toFixed(3), r.flag,
+              r.to, r.kmNew == null ? "" : r.kmNew.toFixed(3),
+              r.toLoad == null ? "" : r.toLoad, r.inside,
+              r.lat, r.lon].map(q).join(",");
+    });
+    var url = URL.createObjectURL(new Blob(
+      ["\ufeff" + head.join(",") + "\n" + body.join("\n")],
+      { type: "text/csv;charset=utf-8" }));
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "out-of-boundaries-"
+      + new Date().toISOString().slice(0, 10) + ".csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  function renderBounds() {
+    var el = $("dbBounds");
+    if (!el || !BOUNDS) return;
+    var t = BOUNDS.totals, all = BOUNDS.rows;
+    var rows = all.filter(function (r) { return !r.bad; });
+    var bad = all.filter(function (r) { return r.bad; });
+    var pct = t.outlets ? (rows.length * 100 / t.outlets) : 0;
+
+    // Which sales areas carry the problem. A total tells you the size; this
+    // tells you where to send somebody.
+    var byBranch = {};
+    rows.forEach(function (r) {
+      var k = r.branch || "—";
+      byBranch[k] = (byBranch[k] || 0) + 1;
+    });
+    var top = Object.keys(byBranch).sort(function (a, b) {
+      return byBranch[b] - byBranch[a]; }).slice(0, 6);
+    var maxB = top.length ? byBranch[top[0]] : 1;
+
+    var head = '<div class="mw-5up" style="margin-top:12px">'
+      + '<div class="cell dash"><span class="k">Out of boundaries</span><b class="mw-flag">'
+      + num(rows.length) + "</b><span class='mw-note'>" + pct.toFixed(2)
+      + "% of " + num(t.outlets) + " outlets</span></div>"
+      + '<div class="cell dash"><span class="k">Urban · over 1.5 km</span><b>'
+      + num(t.flagUrban) + "</b><span class='mw-note'>of " + num(t.urban)
+      + " in urban desa</span></div>"
+      + '<div class="cell dash"><span class="k">Rural · over 4 km</span><b>'
+      + num(t.flagRural) + "</b><span class='mw-note'>of " + num(t.rural)
+      + " in rural desa</span></div>"
+      + '<div class="cell dash"><span class="k">DSE affected</span><b>'
+      + num(t.repsFlagged) + "</b><span class='mw-note'>of " + num(t.reps)
+      + " · " + num(t.repsOver) + " carry over " + num(REB_N) + "</span></div>"
+      + '<div class="cell dash"><span class="k">Detour removable</span><b>'
+      + num(Math.round(t.kmSaved)) + " km</b><span class='mw-note'>"
+      + num(t.noReceiver) + " have no nearer rep</span></div>"
+      + "</div>"
+      + (bad.length
+          ? '<div class="mw-note" style="margin-top:10px;color:var(--red)">'
+            + "<b>" + num(bad.length) + "</b> more sit over " + REB_BAD_KM
+            + " km from their own round — further than this circle is wide. "
+            + "Those are coordinates to fix, not outlets to move, so they are "
+            + "counted apart and marked <b>" + REB_BAD_FLAG
+            + "</b> in the CSV.</div>"
+          : "");
+
+    var bars = top.length
+      ? '<div class="mw-bars" style="margin-top:14px">'
+        + '<span class="k">Where they are — sales area</span>'
+        + top.map(function (b) {
+            return '<div class="mw-bar1"><span>' + esc(b)
+              + '</span><i><b style="width:'
+              + Math.round(byBranch[b] * 100 / maxB) + '%"></b></i><span>'
+              + num(byBranch[b]) + "</span></div>";
+          }).join("") + "</div>"
+      : "";
+
+    var list = rows.slice(0, 12).map(function (r) {
+      return '<div class="mw-dtr bnd body"><span>' + esc(r.code || "—")
+        + "</span><span><b>" + esc(r.name || "—") + "</b></span><span>"
+        + esc(r.desa || "—") + "</span><span>" + esc(r.mc || "—")
+        + "</span><span>" + esc(r.branch || "—") + "</span><span>"
+        + esc(r.kab || "—") + '</span><span class="n"><b>'
+        + r.kmOwn.toFixed(2) + "</b></span><span>"
+        + (r.to ? "<b>" + esc(r.to) + "</b>" : "<span class='mw-why'>none within "
+           + REB_NEAR + " km</span>") + "</span></div>";
+    }).join("");
+
+    el.innerHTML = head + bars
+      + '<div class="mw-dtr bnd head" style="margin-top:16px">'
+      + "<span>Outlet</span><span>Name</span><span>Desa / Kelurahan</span>"
+      + "<span>Microcluster</span><span>Sales area</span><span>City</span>"
+      + '<span class="n">Km to own</span><span>Recommended DSE</span></div>'
+      + (list || '<div class="mw-dtr bnd"><span>Nothing is out of '
+                 + 'boundaries in this file.</span></div>')
+      + (rows.length > 12
+          ? '<div class="mw-note" style="margin-top:8px">Showing the 12 '
+            + "worst of " + num(rows.length)
+            + " — the CSV has every one, with region, area, supervisor and "
+            + "the recommended DSE.</div>"
+          : "")
+      + '<div class="mw-note" style="margin-top:10px">Urban is a desa at '
+      + num(REB_DENSE) + " people per km² or more (" + REB_URBAN_KM
+      + " km allowed); everything else is rural (" + REB_RURAL_KM + " km). "
+      + "Measured to the rep's own nearest outlet, not to a centre."
+      + (t.borders ? "" : " Borders are not drawn, so no outlet is credited "
+        + "with standing inside another rep's patch — build them for that.")
+      + "</div>";
+    $("dbBoundsCsv").disabled = !rows.length;
+  }
+
+  function dashBounds(force) {
+    var el = $("dbBounds");
+    if (!el) return;
+    if (!LOCAL) {
+      el.innerHTML = '<div class="mw-note">Connect local data to run this '
+        + "review.</div>";
+      $("dbBoundsCsv").disabled = true;
+      return;
+    }
+    if (BOUNDS && !force) { renderBounds(); return; }
+    if (boundsBusy) return;
+    if (!STATS) {                       // the stratum needs the desa table
+      el.innerHTML = '<div class="mw-note">Reading desa area and '
+        + "population…</div>";
+      ensureStats(function () { dashBounds(force); });
+      return;
+    }
+    boundsBusy = true;
+    $("dbBoundsCsv").disabled = true;
+    el.innerHTML = '<div class="mw-note" id="dbBoundsWait">'
+      + "Measuring every outlet against its own round…</div>";
+    rebScanAll(function (res) {
+      boundsBusy = false;
+      BOUNDS = res;
+      renderBounds();
+    }, function (done, all) {
+      var w = $("dbBoundsWait");
+      if (w) w.textContent = "Measuring every outlet against its own round — "
+        + num(done) + " of " + num(all) + " DSE…";
+    });
+  }
+
+  if ($("dbBoundsCsv")) {
+    $("dbBoundsCsv").addEventListener("click", boundsCsv);
+  }
+  if ($("dbBoundsRun")) {
+    $("dbBoundsRun").addEventListener("click", function () {
+      BOUNDS = null; dashBounds(true);
+    });
+  }
+
   function dashDupe() {
     var el = $("dbDupe");
     if (!el) return;
@@ -1409,6 +1582,7 @@
     $("dbAlert").hidden = connected;
 
     dashDupe();
+    dashBounds();
     renderSlabs();
     if (!connected) {
       $("dbBars").innerHTML = '<div class="mw-note">Connect local data to see this.</div>';
@@ -1649,6 +1823,7 @@
     if (got.outlets) {
       LOCAL = got.outlets;
       DUPE = null;
+      BOUNDS = null;
     }
     if (got.sites) { SITES = got.sites; siteHue = {}; localSiteCount = {}; }
     reindex();
@@ -1744,7 +1919,7 @@
   function signOut() {
     LOCAL = null;
     SITES = null; siteHue = {}; localSiteCount = {};
-    DUPE = null;
+    DUPE = null; BOUNDS = null;
     tbPin = null; tbPinLabel = "";
     byArea = {}; areaCount = {}; heatMax = 1;
     dseFilter = ""; shown = [];
@@ -2967,6 +3142,18 @@
   var REB_DENSE = 1500;           // people/km² at or above which a desa is urban
   var REB_FLAG = "out of boundaries";
   var REB_NEAR = 20;              // km — how far to look for a receiving rep
+
+  /* BEYOND THIS IT IS NOT A STRAY, IT IS A BAD COORDINATE.
+     The circle spans about 350 km from Pandeglang to Cirebon. An outlet
+     352 km from its own nearest sibling is not a demarcation problem that
+     a supervisor can fix by moving it to another rep -- it is a latitude
+     with a sign error or a decimal in the wrong place, and one of them is
+     the row already known to carry latitude -67.
+     Left in the main count they would top the table, and a summary whose
+     three worst rows are obvious rubbish is a summary nobody trusts. So
+     they are counted and exported separately, under their own flag. */
+  var REB_BAD_KM = 50;
+  var REB_BAD_FLAG = "check the coordinate";
   var rebRows = [], rebLayer = null, rebCode = null;
   var rebTargetLayer = null;   // the polygon a recommendation points at
 
@@ -3160,6 +3347,158 @@
     rebTargetLayer.addTo(map);
     reorder();
     return rebTargetLayer.getBounds();
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     THE SAME RULE, ACROSS THE WHOLE FILE
+
+     The PJP review tab answers "which of THIS rep's outlets are out of
+     boundaries". This answers it for every rep at once, which is a
+     different question for a different reader: a supervisor deciding where
+     to spend a demarcation review, rather than a person looking at one
+     round.
+
+     Same thresholds, same measure, same flag text. If these two ever
+     disagree the summary is worthless, so they share rebStratum() and
+     nearestOf() rather than each having their own copy of the rule.
+
+     IT YIELDS BETWEEN REPS
+     73,661 outlets across 1,501 codes is a few million distance
+     calculations. Done in one go the tab locks up and the browser offers to
+     kill the page; done forty reps at a time with a setTimeout between, the
+     progress line moves and the page stays alive.
+     ══════════════════════════════════════════════════════════════════════ */
+  var BOUNDS = null;          // the last completed scan
+  var boundsBusy = false;
+
+  function rebScanAll(onDone, onTick) {
+    if (!LOCAL) { onDone(null); return; }
+    var all = LOCAL.rows.filter(inSlice);
+    var byDse = {};
+    all.forEach(function (r) { (byDse[r.dse] = byDse[r.dse] || []).push(r); });
+    var codes = Object.keys(byDse);
+    var boxes = {};
+    codes.forEach(function (e) { boxes[e] = rebBox(byDse[e]); });
+
+    // The border features once, not once per outlet: findAt() rebuilds its
+    // array from the layer on every call, and calling it twelve hundred
+    // times is the difference between a second and a minute.
+    var bfeat = [];
+    if (MODEL) {
+      MODEL.eachLayer(function (l) { if (l.feature) bfeat.push(l.feature); });
+    }
+    function insideOther(o, code) {
+      for (var i = 0; i < bfeat.length; i++) {
+        var f = bfeat[i], p = f.properties || {};
+        if (p.dse === code) continue;
+        var b = bbOf(f);
+        if (!b || o.lon < b[0] || o.lon > b[2]
+               || o.lat < b[1] || o.lat > b[3]) continue;
+        if (featHas(f, o.lon, o.lat)) return p.dse;
+      }
+      return null;
+    }
+
+    var kx = kecIndex();
+    var t = { outlets: all.length, reps: codes.length, repsOver: 0,
+              urban: 0, rural: 0, unknown: 0,
+              flagUrban: 0, flagRural: 0, repsFlagged: {},
+              noReceiver: 0, kmSaved: 0, bad: 0, borders: bfeat.length };
+    all.forEach(function (r) {
+      var st = rebStratum(r);
+      if (!st.known) t.unknown++;
+      if (st.s === "urban") t.urban++; else t.rural++;
+    });
+
+    var taken = {}, out = [], i = 0;
+    var dLat = REB_NEAR / 111.32;
+
+    function step() {
+      var end = Math.min(i + 40, codes.length);
+      for (; i < end; i++) {
+        var code = codes[i], mine = byDse[code];
+        if (mine.length > REB_N) t.repsOver++;
+        if (mine.length < 2) continue;
+        for (var j = 0; j < mine.length; j++) {
+          var o = mine[j];
+          var st = rebStratum(o);
+          var self = nearestOf(mine, o.lat, o.lon, o);
+          if (!self.row || self.km <= st.lim) continue;
+
+          // A bad coordinate needs a data fix, not a demarcation change, so
+          // it is set aside before any receiver is looked for.
+          if (self.km > REB_BAD_KM) {
+            t.bad++;
+            var gb = kx[norm(o.kec)] || {};
+            out.push({ code: o.code, name: o.name, brand: o.brand || "",
+              dse: code, unik: o.unik || "", spv: o.spv || "",
+              desa: o.desa || "", kec: o.kec || "", kab: o.kab || "",
+              mc: o.mc || "", region: gb.region || "", area: gb.area || "",
+              branch: gb.branch || "", terr: gb.terr || "",
+              stratum: st.s, density: st.den, known: st.known, lim: st.lim,
+              kmOwn: self.km, flag: REB_BAD_FLAG, bad: true,
+              to: "", kmNew: null, toLoad: null, inside: "",
+              lat: o.lat, lon: o.lon, row: o });
+            continue;
+          }
+
+          var insideCode = bfeat.length ? insideOther(o, code) : null;
+          var dLon = REB_NEAR / (111.32 * Math.max(0.2,
+                       Math.cos(o.lat * Math.PI / 180)));
+          var best = null, bestScore = Infinity;
+          for (var k = 0; k < codes.length; k++) {
+            var e = codes[k];
+            if (e === code) continue;
+            var b = boxes[e];
+            if (!b || o.lon < b[0] - dLon || o.lon > b[2] + dLon
+                   || o.lat < b[1] - dLat || o.lat > b[3] + dLat) continue;
+            var n = nearestOf(byDse[e], o.lat, o.lon, null);
+            if (!n.row) continue;
+            var load = byDse[e].length + (taken[e] || 0);
+            var sc = n.km;
+            if (e === insideCode) sc *= 0.5;
+            if (load >= REB_N) sc += 100;
+            if (sc < bestScore) {
+              bestScore = sc;
+              best = { dse: e, km: n.km, load: load };
+            }
+          }
+          if (best && best.km >= self.km) best = null;
+          if (!best) t.noReceiver++;
+          else {
+            taken[best.dse] = (taken[best.dse] || 0) + 1;
+            t.kmSaved += self.km - best.km;
+          }
+
+          var g = kx[norm(o.kec)] || {};
+          if (st.s === "urban") t.flagUrban++; else t.flagRural++;
+          t.repsFlagged[code] = 1;
+          out.push({
+            code: o.code, name: o.name, brand: o.brand || "",
+            dse: code, unik: o.unik || "", spv: o.spv || "",
+            desa: o.desa || "", kec: o.kec || "", kab: o.kab || "",
+            mc: o.mc || "", region: g.region || "", area: g.area || "",
+            branch: g.branch || "", terr: g.terr || "",
+            stratum: st.s, density: st.den, known: st.known, lim: st.lim,
+            kmOwn: self.km, flag: REB_FLAG,
+            to: best ? best.dse : "", kmNew: best ? best.km : null,
+            toLoad: best ? best.load + 1 : null,
+            inside: insideCode || "",
+            lat: o.lat, lon: o.lon, row: o
+          });
+        }
+      }
+      if (onTick) onTick(i, codes.length);
+      if (i < codes.length) { setTimeout(step, 0); return; }
+      // Real findings first, worst gap at the top; bad coordinates last,
+      // because they are somebody else's job.
+      out.sort(function (a, b) {
+        return (a.bad ? 1 : 0) - (b.bad ? 1 : 0) || b.kmOwn - a.kmOwn;
+      });
+      t.repsFlagged = Object.keys(t.repsFlagged).length;
+      onDone({ rows: out, totals: t });
+    }
+    step();
   }
 
   function rebNote(html) {

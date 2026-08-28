@@ -1,3 +1,7 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # NEW POLYGON PJP DSE — notes for Claude
 
 A sibling of API Location Pulldown, not a fork of it. Read `README.md` first;
@@ -30,7 +34,26 @@ quietly rather than loudly.
 ./.venv/bin/python migrate.py           # into an empty data/ directory
 ./.venv/bin/python remap_mc.py          # derivation 1 — seconds
 ./.venv/bin/python derive_sites.py      # derivation 2 — two to four minutes
+./.venv/bin/python prebuild_maps.py     # rebuild every mapcache file + the rollup cache
+./.venv/bin/python purge_offmap.py      # report features outside HOME_BOUNDS; --apply removes
+./.venv/bin/python mcprofile.py "MC-JAKARTA PUSAT"   # who works a microcluster
+node --check static/js/map_workspace.js # after EVERY edit to the browser code
 ```
+
+Publishing (details in `DEPLOY.md`, which is the plan; these are the two
+commands it turns on):
+
+```bash
+./.venv/bin/python make_public_db.py    # scrubbed copy -> data/public/; --dry reports only
+./deploy/build_release.sh               # -> dist/pjp-dse-<stamp>.tar.gz
+                                        # refuses a phone field, a .env, a .kml,
+                                        # or an outlet_dse / site_locations map cache
+```
+
+The `Makefile` is inherited from 5001 and most of its targets
+(`pull-overture`, `pull-osm`, `reconcile`, `enrich`, `export`, `map`, …) drive
+the POI pipeline, which no page here uses. `migrate`, `serve`, `start`,
+`stop`, `test` are the ones that mean anything in this app.
 
 ## Ground rules
 
@@ -118,10 +141,13 @@ curl -s localhost:5002/api/configuration/status   # honest about what is missing
 curl -s localhost:5002/api/layer-model            # 0 unclaimed layers
 ```
 
-Load every menu item literally — `/configuration`, `/layer-model`,
-`/distribution`, `/preview-polygon`, `/data-files`. These pages are rendered
-from `configuration.LAYERS` by key, so a renamed or dropped key raises a
-`KeyError` at request time and nothing at import time; only a request finds it.
+Load every menu item literally. `territory_api.MENUS` is the list, and it is
+six now, not the four the README still describes — `/configuration`,
+`/distribution`, `/preview-polygon`, `/polygon-samples`, `/map-workspace`,
+`/layer-model` — plus `/data-files` and `/territory`, which are routed but not
+in the menu. These pages are rendered from `configuration.LAYERS` by key, so a
+renamed or dropped key raises a `KeyError` at request time and nothing at
+import time; only a request finds it.
 
 `unclaimed` being non-zero means a layer was imported that no declared input
 claims — usually a file that went into the wrong slot. That number is the
@@ -246,6 +272,23 @@ Calibrated against the August workbook — 73,661 outlets with coordinates:
 Those thresholds flag **1,224 outlets, 1.66%** — a review list, not a flood.
 Across the 653 reps carrying over 50 outlets: 443 flags, 357 with a receiver,
 86 with no nearer rep within 20 km, median 2.31 km of detour removed per move.
+
+**The whole-file version lives on the dashboard** — `rebScanAll()` runs the
+same rule across every rep and fills the *Outlets out of boundaries* cell,
+with a CSV carrying desa, kecamatan, city, microcluster, region, area, sales
+area, supervisor and the recommended DSE. It shares `rebStratum()` and
+`nearestOf()` with the per-rep tab rather than copying the rule, because two
+copies of a threshold drift. It yields every 40 reps: 73,661 outlets is a few
+million distance calculations and doing them in one go locks the tab.
+
+**Above `REB_BAD_KM` (50 km) it is a bad coordinate, not a stray.** The circle
+is about 350 km wide, so an outlet 352 km from its own nearest sibling is a
+sign error or a misplaced decimal — one sits in Lampung, across the Sunda
+Strait. Eleven rows qualify. Left in the main count they top the table, and a
+summary whose three worst rows are obvious rubbish is a summary nobody
+trusts, so they are counted apart and flagged `check the coordinate`. That is
+the same family as the latitude −67 row, and the reason Map Workspace still
+wants the home-bounds filter Polygon Samples already has.
 
 ## Outlet Code is not a key (2026-08-27)
 
@@ -410,3 +453,89 @@ Two data findings still open, both flagged and neither fixed:
   → NORTH KARAWANG** in `ref_kecamatan`, not West Java. Probably wrong.
 - An outlet carries **latitude −67.0661**. Polygon Samples has a home-bounds
   filter; Map Workspace does not.
+
+## Maps are served from disk, not built per request (2026-08-26)
+
+`mapcache.py` writes each boundary layer once into a simplified, rounded,
+gzipped GeoJSON under `data/mapcache/`. `/api/territory/<layer>.geojson`
+checks `is_fresh()` and streams the file; the 7,761-round-trip rebuild only
+happens when the stamp is stale. Consequences worth holding:
+
+- **Nothing may compute from a mapcache file.** Simplification is
+  per-polygon, not topological, so neighbours can part by up to the
+  tolerance (11 m for desa). Areas, containment and every figure come from
+  `geo_feature`. The files are for drawing.
+- **Any code path that changes a layer must `mapcache.drop()` it** —
+  `configuration.py`, `purge_offmap.py` and `prebuild_maps.py` all do. A
+  layer re-imported without a drop keeps serving the old shapes and the page
+  looks like the upload silently failed.
+- After changing *how* the files are built (tolerance, precision, the props
+  attached by `territory_api._bulk_props`), run `prebuild_maps.py` — nothing
+  invalidates on a code change, only on a data change. It also warms the
+  roll-up cache (`base_rows.json.gz`, `desa_placement.json.gz`), which is the
+  half-minute the Preview Polygon page otherwise pays on each restart.
+
+## Polygon Samples is a second store, not a layer (samples.py)
+
+Somebody else's demarcation, drawn *on top of* the application's layers and
+never in place of them: its own tables (`sample_set`, `sample_outlet`), its
+own upload, its own delete. Deleting every sample cannot touch a permanent
+layer, and a sample cannot overwrite one. Keep that separation — it is the
+reason a branch's working file can be looked at at all.
+
+- Name, branch and region are required **before** the file is read. On a
+  shared instance "whose file is this?" is the first question asked of an
+  overlay, so it is data, not metadata offered afterwards.
+- `config.sample_store_allowed()` is where the reverse-proxy trap is handled:
+  behind nginx every visitor arrives from `127.0.0.1`, so a "localhost only"
+  test on `remote_addr` says yes to the internet exactly when it must say no.
+  `PUBLIC_MODE` therefore decides first and the address test never runs there.
+  `SAMPLE_STORE` is `local` (default) / `on` / `off`.
+- `make_public_db.DROP_TABLES` drops both sample tables. Samples do not travel.
+
+## Big KML, and the registry that says what a field is for
+
+- **`kmlstream.py` walks a KML placemark at a time** with `iterparse` +
+  `clear()`. `import_local.parse_kml_file` builds a DOM of the whole
+  document, which is fine at 1 MB and fatal at the 815 MB national desa
+  export — the process dies and it reads as a hung upload. New readers for
+  large exports go through `kmlstream`, not `ET.fromstring`. It also treats
+  the literal string `NULL` (and `#N/A`, `-`, `N/A`) as blank, once, so no
+  consumer downstream ever sees a place called NULL.
+- **`kmllayers.LAYERS` is one registry with three consumers** — the popup
+  card (`preview`, five fields is the budget), the filter list (`filters`,
+  low-cardinality classifications only) and `derive` (computed on import and
+  stored beside the real fields so it filters and colours like the rest).
+  Add a field in one place; a field added to a template alone appears in the
+  popup and nowhere else. Layers are matched **on their fields, not their
+  file names** — same rule as the boundary KMZs.
+
+## Adding a route, on an application that is published
+
+Two `before_request` guards in `app.py`, in this order, both fail-closed:
+
+1. `_public_mode_guard` — under `PUBLIC_MODE`, anything that is not GET /
+   HEAD / OPTIONS is refused 403 unless its path is in
+   `app.PUBLIC_WRITE_ALLOW` (two paths, both compute-and-forget).
+2. `_workspace_only_guard` — under `WORKSPACE_ONLY`, anything not in
+   `config.WORKSPACE_READS` (or `/static/`) returns **404, not 403**.
+
+So a new endpoint is invisible on a published instance until somebody adds
+it on purpose, which is the intent — do not "fix" a 404 on a public box by
+loosening a guard. `WORKSPACE_READS` is **enumerated, never prefixed**: a
+prefix like `/api/territory/` would also admit `poi.geojson` and
+`service-points.geojson`, which is how an allowlist becomes a denylist. A new
+page also needs an entry in `territory_api.MENUS`, and `MENUS` is filtered
+down to the workspace entry when `WORKSPACE_ONLY` is set.
+
+## Environment (`.env`, git-ignored; `deploy/env.public.example` for a server)
+
+`PUBLIC_MODE`, `WORKSPACE_ONLY`, `SECRET_KEY` (`app.py` refuses to start a
+`PUBLIC_MODE` instance whose key is the placeholder or under 24 characters —
+`config.secret_key_ok()`),
+`SAMPLE_STORE` / `SAMPLE_PIN` / `SAMPLE_MAX_ROWS` / `SAMPLE_MODEL_MAX`,
+`MAX_UPLOAD_MB` (1024 by default — these workbooks are large),
+`HOME_MINLON`/`MINLAT`/`MAXLON`/`MAXLAT` (what `config.on_map()` and
+`purge_offmap.py` test against), `DB_PATH`, `BEHIND_PROXY` (defaults ON
+under `PUBLIC_MODE`, so `ProxyFix` trusts one hop of `X-Forwarded-*`). `GOOGLE_API_KEY` belongs to the
+inherited POI pullers and must not exist on a published host.

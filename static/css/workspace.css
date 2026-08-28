@@ -451,3 +451,17 @@
    map and the table are one selection, so the table has to show which row
    the amber outline belongs to. */
 .mw-dtr.reb.body.sel { background:#fbeeeb; box-shadow:inset 3px 0 0 #e08a00; }
+
+/* ── OUT OF BOUNDARIES, WHOLE-FILE SUMMARY ──────────────────────────────
+   Eight columns: what the outlet is, where it is in the territory, how far
+   it sits from its own round, and who should take it. */
+.mw-dtr.bnd {
+  grid-template-columns:110px 1.3fr 1.1fr 1.1fr 1.1fr .9fr 82px 1.1fr;
+}
+#dbBoundsWrap .mw-5up { grid-template-columns:repeat(5,1fr); }
+#dbBoundsWrap .mw-5up b { font:700 22px/1.15 inherit; margin-top:4px; }
+#dbBoundsWrap .mw-5up .mw-note { display:block; margin-top:5px; }
+#dbBoundsWrap .mw-bars .k { margin-bottom:2px; }
+@media (max-width:1180px) {
+  #dbBoundsWrap .mw-5up { grid-template-columns:repeat(2,1fr); }
+}
