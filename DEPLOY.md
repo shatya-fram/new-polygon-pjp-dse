@@ -41,7 +41,12 @@ Ubuntu 24.04. When it is built, from your Mac:
 ```bash
 ssh root@<server-ip>
 
-adduser --disabled-password --gecos "" pjp
+# The home directory and the application directory must be TWO places.
+# Giving pjp a home of /opt/pjp-dse looks tidy and then breaks the clone:
+# `git clone` refuses a target that is not empty, and a home directory has
+# dotfiles in it. Home holds the deploy key; /opt/pjp-dse holds the code.
+adduser --disabled-password --gecos "" pjp        # home: /home/pjp
+mkdir -p /opt/pjp-dse && chown pjp:pjp /opt/pjp-dse
 apt update && apt install -y python3-venv python3-pip nginx apache2-utils ufw
 
 ufw allow OpenSSH
@@ -102,7 +107,7 @@ git add -A
 git commit -m "NEW POLYGON PJP DSE — territory application"
 
 # create an EMPTY private repo on github.com first, then:
-git remote add origin git@github.com:<you>/pjp-dse.git
+git remote add origin git@github.com:shatya-fram/new-polygon-pjp-dse.git
 git branch -M main
 git push -u origin main
 ```
@@ -153,7 +158,7 @@ today is also removed from a server an earlier build already put it on.
 
 ```bash
 # on the server
-sudo -u pjp git clone git@github.com:<you>/pjp-dse.git /opt/pjp-dse
+sudo -u pjp git clone git@github.com:shatya-fram/new-polygon-pjp-dse.git /opt/pjp-dse
 cd /opt/pjp-dse
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 cp deploy/env.public.example .env && nano .env     # §4
@@ -162,11 +167,11 @@ cp deploy/env.public.example .env && nano .env     # §4
 ```bash
 # from the Mac — the data, which git never carries
 ./.venv/bin/python make_public_db.py
-rsync -avz --progress data/public/poi_pulldown.db pjp@<server>:/opt/pjp-dse/data/
+rsync -avz --progress data/public/poi_pulldown.db pjp@188.245.228.253:/opt/pjp-dse/data/
 rsync -avz --delete \
   --exclude '*.points.*' \
   --exclude 'outlet_dse*' --exclude 'site_locations*' \
-  data/mapcache/ pjp@<server>:/opt/pjp-dse/data/mapcache/
+  data/mapcache/ pjp@188.245.228.253:/opt/pjp-dse/data/mapcache/
 ```
 
 Then §5 and §6 as written — systemd and nginx.
@@ -193,12 +198,12 @@ commit if the service does not come up**. It never touches `.env` or
 ```bash
 # Mac
 ./.venv/bin/python make_public_db.py
-rsync -avz --progress data/public/poi_pulldown.db pjp@<server>:/opt/pjp-dse/data/
+rsync -avz --progress data/public/poi_pulldown.db pjp@188.245.228.253:/opt/pjp-dse/data/
 rsync -avz --delete \
   --exclude '*.points.*' \
   --exclude 'outlet_dse*' --exclude 'site_locations*' \
-  data/mapcache/ pjp@<server>:/opt/pjp-dse/data/mapcache/
-ssh pjp@<server> "sudo systemctl restart pjp-dse"
+  data/mapcache/ pjp@188.245.228.253:/opt/pjp-dse/data/mapcache/
+ssh pjp@188.245.228.253 "sudo systemctl restart pjp-dse"
 ```
 
 rsync sends only what differs, so a refresh where most polygons are
