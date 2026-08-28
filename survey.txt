@@ -1,0 +1,205 @@
+[1mSERVER SURVEY  frontline-serverIOH  2026-08-28T03:31:19+00:00[0m
+
+[1m── The machine ───────────────────────────────────────────────────────[0m
+   Ubuntu 26.04 LTS
+   kernel   7.0.0-28-generic
+   uptime  up 3 weeks, 4 days, 11 minutes
+   cpu      2 core(s)
+
+                  total        used        free      shared  buff/cache   available
+   Mem:           3.7Gi       2.2Gi       281Mi        45Mi       1.5Gi       1.5Gi
+   Swap:          3.9Gi       509Mi       3.4Gi
+
+   /dev/sda1        38G   17G   19G  47% /
+   Filesystem      Size  Used Avail Use% Mounted on
+
+[1m── Load right now ────────────────────────────────────────────────────[0m
+   0.17 0.17 0.12 1/328 90355
+   top 5 by memory:
+     %MEM   RSS COMMAND
+      7.4 288940 python3
+      4.9 192132 python3
+      4.6 182440 dockerd
+      4.4 172364 python3
+      3.5 136804 python
+
+[1m── What is listening  — pick a free port from the gaps ───────────────[0m
+   State  Recv-Q Send-Q Local Address:Port Peer Address:PortProcess                                                                                                                         
+   LISTEN 0      511          0.0.0.0:443       0.0.0.0:*    users:(("nginx",pid=3573268,fd=11),("nginx",pid=3573267,fd=11),("nginx",pid=2511541,fd=11))                                    
+   LISTEN 0      4096      127.0.0.54:53        0.0.0.0:*    users:(("systemd-resolve",pid=2681878,fd=20))                                                                                  
+   LISTEN 0      511          0.0.0.0:80        0.0.0.0:*    users:(("nginx",pid=3573268,fd=12),("nginx",pid=3573267,fd=12),("nginx",pid=2511541,fd=12))                                    
+   LISTEN 0      4096         0.0.0.0:22        0.0.0.0:*    users:(("sshd",pid=1333,fd=3),("systemd",pid=1,fd=161))                                                                        
+   LISTEN 0      4096   127.0.0.53%lo:53        0.0.0.0:*    users:(("systemd-resolve",pid=2681878,fd=18))                                                                                  
+   LISTEN 0      200        127.0.0.1:5432      0.0.0.0:*    users:(("postgres",pid=2510513,fd=7))                                                                                          
+   LISTEN 0      511          0.0.0.0:8181      0.0.0.0:*    users:(("nginx",pid=3573268,fd=10),("nginx",pid=3573267,fd=10),("nginx",pid=2511541,fd=10))                                    
+   LISTEN 0      511          0.0.0.0:8180      0.0.0.0:*    users:(("nginx",pid=3573268,fd=9),("nginx",pid=3573267,fd=9),("nginx",pid=2511541,fd=9))                                       
+   LISTEN 0      4096         0.0.0.0:8082      0.0.0.0:*    users:(("docker-proxy",pid=2297161,fd=8))                                                                                      
+   LISTEN 0      128          0.0.0.0:8080      0.0.0.0:*    users:(("python3",pid=1054481,fd=15))                                                                                          
+   LISTEN 0      128          0.0.0.0:8090      0.0.0.0:*    users:(("python3",pid=3598024,fd=5))                                                                                           
+   LISTEN 0      2048       127.0.0.1:8091      0.0.0.0:*    users:(("uvicorn",pid=1054607,fd=15))                                                                                          
+   LISTEN 0      2048       127.0.0.1:8095      0.0.0.0:*    users:(("gunicorn",pid=3911102,fd=3),("gunicorn",pid=3522108,fd=3),("gunicorn",pid=3522104,fd=3))                              
+   LISTEN 0      2048       127.0.0.1:8081      0.0.0.0:*    users:(("gunicorn",pid=3977778,fd=3),("gunicorn",pid=1457918,fd=3),("gunicorn",pid=15586,fd=3))                                
+   LISTEN 0      2048       127.0.0.1:8099      0.0.0.0:*    users:(("uvicorn",pid=1054620,fd=13))                                                                                          
+   LISTEN 0      2048       127.0.0.1:8001      0.0.0.0:*    users:(("gunicorn",pid=2510647,fd=5),("gunicorn",pid=2510634,fd=5),("gunicorn",pid=2510627,fd=5),("gunicorn",pid=2510626,fd=5))
+   LISTEN 0      4096            [::]:22           [::]:*    users:(("sshd",pid=1333,fd=4),("systemd",pid=1,fd=163))                                                                        
+   LISTEN 0      200            [::1]:5432         [::]:*    users:(("postgres",pid=2510513,fd=6))                                                                                          
+   LISTEN 0      4096            [::]:8082         [::]:*    users:(("docker-proxy",pid=2297166,fd=8))                                                                                      
+
+   ports 8000-8100 already taken:
+     8001 8080 8081 8082 8090 8091 8095 8099 
+
+[1m── Running services  — check for a name that would collide with pjp-dse ─[0m
+   chrony.service
+   consignment-staging.service
+   containerd.service
+   cron.service
+   dbus.service
+   docker.service
+   frontliner.service
+   getty@tty1.service
+   kecamatan-analytics-api.service
+   merchandiser-bot.service
+   merchandiser-web.service
+   networkd-dispatcher.service
+   nginx.service
+   opshub.service
+   polkit.service
+   postgresql@18-main.service
+   postpaid_frontliner.service
+   qemu-guest-agent.service
+   rsyslog.service
+   serial-getty@ttyS0.service
+   ssh.service
+   systemd-journald.service
+   systemd-logind.service
+   systemd-networkd.service
+   systemd-resolved.service
+   systemd-udevd.service
+   unattended-upgrades.service
+   user@0.service
+   vanguard-bot.service
+   vanguard-web.service
+
+   anything already called pjp / polygon / dse:
+        none — the unit name is free
+
+[1m── nginx ─────────────────────────────────────────────────────────────[0m
+   nginx version: nginx/1.28.3 (Ubuntu)
+   config test:
+     nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+     nginx: configuration file /etc/nginx/nginx.conf test is successful
+
+   enabled sites:
+     consignment.conf
+     frontliner
+     ioh-dashboard
+     kecamatan-analytics
+     merchandiser
+     opshub
+     postpaid_frontliner
+     vanguard
+
+   server_name values in use  — a new block must not reuse one:
+
+   WHO OWNS THE BARE IP  — the default_server answers requests with no hostname:
+        no explicit default_server — the first block loaded wins
+
+   listen directives:
+
+[1m── Certificates  — certbot --nginx rewrites OTHER apps' server blocks ─[0m
+   certbot 4.0.0
+       Certificate Name: dashboard.gamextopia.id
+         Domains: dashboard.gamextopia.id
+         Expiry Date: 2026-11-02 07:24:24+00:00 (VALID: 66 days)
+       Certificate Name: frontliner.gamextopia.id
+         Domains: frontliner.gamextopia.id
+         Expiry Date: 2026-10-11 03:05:37+00:00 (VALID: 43 days)
+       Certificate Name: kecamatan-analytics.gamextopia.id
+         Domains: kecamatan-analytics.gamextopia.id
+         Expiry Date: 2026-11-01 04:23:30+00:00 (VALID: 65 days)
+       Certificate Name: ops.188-245-228-253.sslip.io
+         Domains: ops.188-245-228-253.sslip.io
+         Expiry Date: 2026-11-24 03:58:43+00:00 (VALID: 88 days)
+       Certificate Name: postpaid.gamextopia.id
+         Domains: postpaid.gamextopia.id
+         Expiry Date: 2026-10-19 10:01:53+00:00 (VALID: 52 days)
+       Certificate Name: vanguard5g.gamextopia.id
+         Domains: vanguard5g.gamextopia.id
+         Expiry Date: 2026-11-04 07:08:32+00:00 (VALID: 68 days)
+   renewal hooks that touch nginx:
+     /etc/letsencrypt/renewal/vanguard5g.gamextopia.id.conf
+     /etc/letsencrypt/renewal/postpaid.gamextopia.id.conf
+     /etc/letsencrypt/renewal/kecamatan-analytics.gamextopia.id.conf
+     /etc/letsencrypt/renewal/ops.188-245-228-253.sslip.io.conf
+     /etc/letsencrypt/renewal/dashboard.gamextopia.id.conf
+     /etc/letsencrypt/renewal/frontliner.gamextopia.id.conf
+
+[1m── Other applications on disk ────────────────────────────────────────[0m
+   /srv
+   /opt
+     backend
+     consignment
+     containerd
+     frontliner
+     frontliner_backups
+     ioh-dashboard
+     ioh-inner-performance
+     merchandiser_ioh
+     opshub
+     postpaid_frontliner
+     vanguard-5g
+   /var/www
+     html
+     kecamatan-analytics
+   /home
+     consignment
+
+[1m── Databases  — none of ours; confirm we touch nothing ───────────────[0m
+   LISTEN 0      200        127.0.0.1:5432      0.0.0.0:*   
+   LISTEN 0      200            [::1]:5432         [::]:*   
+   postgresql is ACTIVE — leave it alone
+
+[1m── Users ─────────────────────────────────────────────────────────────[0m
+   is 'pjp' taken?
+        no — free to create
+
+[1m── Firewall ──────────────────────────────────────────────────────────[0m
+   Status: active
+   Logging: on (low)
+   Default: deny (incoming), allow (outgoing), deny (routed)
+   New profiles: skip
+   
+   To                         Action      From
+   --                         ------      ----
+   22/tcp                     ALLOW IN    Anywhere                  
+   80/tcp                     ALLOW IN    Anywhere                  
+   443/tcp                    ALLOW IN    Anywhere                  
+   8082/tcp                   ALLOW IN    Anywhere                  
+   8181/tcp                   ALLOW IN    Anywhere                   # consignment staging
+   22/tcp (v6)                ALLOW IN    Anywhere (v6)             
+   80/tcp (v6)                ALLOW IN    Anywhere (v6)             
+   443/tcp (v6)               ALLOW IN    Anywhere (v6)             
+   8082/tcp (v6)              ALLOW IN    Anywhere (v6)             
+   8181/tcp (v6)              ALLOW IN    Anywhere (v6)              # consignment staging
+   
+
+[1m── Python ────────────────────────────────────────────────────────────[0m
+   python3  Python 3.14.4
+
+[1m── Read this before installing ───────────────────────────────────────[0m
+   1. Take a port from the free range above and put it in the systemd unit.
+      Do not assume 8000 — one of the existing apps probably has it.
+   2. Add a NEW file under sites-available. Do not edit an existing one and
+      do not claim default_server: on a bare IP the default_server is what
+      answers, so taking it would silently redirect another app's traffic.
+      Until a hostname exists, listen on a distinct port instead.
+   3. Reload nginx, never restart it. A reload keeps the other apps'
+      connections; a restart drops every one of them.
+   4. If certbot already manages certificates here, use
+      `certbot certonly --webroot` — `--nginx` edits every server block it
+      finds, including the ones that are not ours.
+   5. Set MemoryMax and CPUQuota on the unit. This application loads 7,761
+      polygons into memory on first request; without a ceiling an overrun
+      would be killed by the OOM reaper, and the reaper does not always pick
+      the process that caused it.
+

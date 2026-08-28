@@ -12,9 +12,9 @@ Wants=network-online.target
 Type=simple
 User=pjp
 Group=pjp
-WorkingDirectory=/srv/pjp-dse
-EnvironmentFile=/srv/pjp-dse/.env
-ExecStart=/srv/pjp-dse/.venv/bin/gunicorn -c deploy/gunicorn.conf.py app:app
+WorkingDirectory=/opt/pjp-dse
+EnvironmentFile=/opt/pjp-dse/.env
+ExecStart=/opt/pjp-dse/.venv/bin/gunicorn -c deploy/gunicorn.conf.py app:app
 Restart=on-failure
 RestartSec=5
 
@@ -24,12 +24,29 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/srv/pjp-dse/data
+ReadWritePaths=/opt/pjp-dse/data
 ProtectKernelTunables=true
 ProtectControlGroups=true
 RestrictSUIDSGID=true
 LockPersonality=true
-MemoryMax=2G
+
+# ── THE CEILING IS FOR THE NEIGHBOURS, NOT FOR US ──────────────────────
+# The target box has 3.7 GB with 1.5 GB free and 509 MB of swap already in
+# use, carrying eight other applications and Postgres. MemoryMax was 2G,
+# which is more than the free memory: it would never have fired, and an
+# overrun would have gone to the kernel OOM killer instead -- which picks
+# by a heuristic score, not by fault, and could have taken Postpaid.
+#
+# MemoryHigh throttles and reclaims first, so the service slows before
+# anything dies. MemoryMax kills inside THIS cgroup only, and Restart
+# brings it back. Both are deliberately below what the box could spare, so
+# the failure lands here rather than on somebody else's application.
+MemoryHigh=450M
+MemoryMax=600M
+
+# One of the two cores. Force fit against 7,761 desa is a real burst of CPU
+# and there is no reason for it to be felt by anything else on the box.
+CPUQuota=50%
 
 [Install]
 WantedBy=multi-user.target

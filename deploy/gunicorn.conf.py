@@ -9,16 +9,33 @@ WHY GUNICORN AND NOT app.run
 WHY SYNC WORKERS AND SO FEW
     Every request here is CPU work against SQLite -- simplifying polygons,
     building a territory -- not waiting on a network. Async workers buy
-    nothing for that and SQLite does not want many writers. Two workers per
-    core, and a long timeout because Force fit on a real file legitimately
-    takes half a minute.
+    nothing for that and SQLite does not want many writers.
+
+WHY TWO, FIXED, AND NOT "two per core"
+    The survey of the target box settled this. It has 2 cores and 3.7 GB of
+    RAM, of which 1.5 GB was available and 509 MB of swap was already in
+    use, carrying eight other applications -- Postpaid, Frontliner,
+    Merchandiser, Vanguard, Opshub, Consignment, a dashboard and an
+    analytics API -- plus Postgres and Docker.
+
+    The old default was min(4, cores * 2 + 1), which on that box is FOUR.
+    Each worker holds its own parsed copy of the desa layer in
+    territory_api._poly_cache for the life of the process; four of them
+    would have been most of the free memory, and the kernel's OOM killer
+    does not reliably kill the process that caused the pressure. It might
+    have taken Postpaid instead.
+
+    So: two, stated as a number rather than derived from the hardware, with
+    max_requests recycling to keep the footprint flat. The unit file caps
+    the cgroup as well, so an overrun kills this service and nothing else.
 """
-import multiprocessing
 import os
 
-bind = os.getenv("BIND", "127.0.0.1:5002")
-workers = int(os.getenv("WEB_WORKERS",
-                        str(min(4, multiprocessing.cpu_count() * 2 + 1))))
+# 8096: free on the target box. 8001, 8080, 8081, 8082, 8090, 8091, 8095
+# and 8099 are taken by the applications already there, and 8180/8181 by
+# nginx. Loopback only -- nginx is the only thing that may reach this.
+bind = os.getenv("BIND", "127.0.0.1:8096")
+workers = int(os.getenv("WEB_WORKERS", "2"))
 worker_class = "sync"
 # Force fit loads 7,761 desa polygons and rebalances against them. Thirty
 # seconds is not enough; a worker killed mid-build looks like a broken page.

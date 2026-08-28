@@ -76,15 +76,15 @@ if command -v nginx >/dev/null 2>&1; then
   ls -1 /etc/nginx/conf.d/*.conf 2>/dev/null | sed 's/^/     /'
   echo
   note "server_name values in use  — a new block must not reuse one:"
-  $SUDO grep -rhE '^\s*server_name' /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null \
+  $SUDO grep -RhE '^[[:space:]]*server_name' /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null \
     | sed 's/^/     /' | sort -u
   echo
   note "WHO OWNS THE BARE IP  — the default_server answers requests with no hostname:"
-  $SUDO grep -rlE 'default_server' /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null \
+  $SUDO grep -RlE 'default_server' /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null \
     | sed 's/^/     /' || note "     no explicit default_server — the first block loaded wins"
   echo
   note "listen directives:"
-  $SUDO grep -rhE '^\s*listen' /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null \
+  $SUDO grep -RhE '^[[:space:]]*listen' /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null \
     | sed 's/^/     /' | sort -u
 else
   note "nginx is NOT installed — installing it would be a change to a shared box."
@@ -95,7 +95,7 @@ if command -v certbot >/dev/null 2>&1; then
   note "$(certbot --version 2>&1)"
   $SUDO certbot certificates 2>/dev/null | grep -E 'Certificate Name|Domains|Expiry' | sed 's/^/     /'
   note "renewal hooks that touch nginx:"
-  $SUDO grep -rl nginx /etc/letsencrypt/renewal/ 2>/dev/null | sed 's/^/     /' || note "     none"
+  $SUDO grep -Rl nginx /etc/letsencrypt/renewal/ 2>/dev/null | sed 's/^/     /' || note "     none"
 else
   note "certbot not installed"
 fi

@@ -153,8 +153,8 @@ today is also removed from a server an earlier build already put it on.
 
 ```bash
 # on the server
-sudo -u pjp git clone git@github.com:<you>/pjp-dse.git /srv/pjp-dse
-cd /srv/pjp-dse
+sudo -u pjp git clone git@github.com:<you>/pjp-dse.git /opt/pjp-dse
+cd /opt/pjp-dse
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 cp deploy/env.public.example .env && nano .env     # §4
 ```
@@ -162,11 +162,11 @@ cp deploy/env.public.example .env && nano .env     # §4
 ```bash
 # from the Mac — the data, which git never carries
 ./.venv/bin/python make_public_db.py
-rsync -avz --progress data/public/poi_pulldown.db pjp@<server>:/srv/pjp-dse/data/
+rsync -avz --progress data/public/poi_pulldown.db pjp@<server>:/opt/pjp-dse/data/
 rsync -avz --delete \
   --exclude '*.points.*' \
   --exclude 'outlet_dse*' --exclude 'site_locations*' \
-  data/mapcache/ pjp@<server>:/srv/pjp-dse/data/mapcache/
+  data/mapcache/ pjp@<server>:/opt/pjp-dse/data/mapcache/
 ```
 
 Then §5 and §6 as written — systemd and nginx.
@@ -180,7 +180,7 @@ Then §5 and §6 as written — systemd and nginx.
 git add -A && git commit -m "…" && git push
 
 # server
-sudo -u pjp /srv/pjp-dse/deploy/update.sh
+sudo -u pjp /opt/pjp-dse/deploy/update.sh
 ```
 
 `update.sh` pulls, reinstalls only if `requirements.txt` moved, runs
@@ -193,11 +193,11 @@ commit if the service does not come up**. It never touches `.env` or
 ```bash
 # Mac
 ./.venv/bin/python make_public_db.py
-rsync -avz --progress data/public/poi_pulldown.db pjp@<server>:/srv/pjp-dse/data/
+rsync -avz --progress data/public/poi_pulldown.db pjp@<server>:/opt/pjp-dse/data/
 rsync -avz --delete \
   --exclude '*.points.*' \
   --exclude 'outlet_dse*' --exclude 'site_locations*' \
-  data/mapcache/ pjp@<server>:/srv/pjp-dse/data/mapcache/
+  data/mapcache/ pjp@<server>:/opt/pjp-dse/data/mapcache/
 ssh pjp@<server> "sudo systemctl restart pjp-dse"
 ```
 
@@ -215,10 +215,10 @@ a clone, `update.sh` is the faster path and the one with a rollback.
 
 ```bash
 ssh pjp@<server-ip>
-sudo mkdir -p /srv/pjp-dse && sudo chown pjp:pjp /srv/pjp-dse
+sudo mkdir -p /opt/pjp-dse && sudo chown pjp:pjp /opt/pjp-dse
 tar xzf /tmp/pjp-dse-*.tar.gz -C /tmp
-mv /tmp/pjp-dse-*/* /srv/pjp-dse/
-cd /srv/pjp-dse
+mv /tmp/pjp-dse-*/* /opt/pjp-dse/
+cd /opt/pjp-dse
 
 python3 -m venv .venv
 .venv/bin/pip install -U pip
@@ -326,10 +326,10 @@ scp dist/pjp-dse-<stamp>.tar.gz pjp@<server-ip>:/tmp/
 
 # on the server
 sudo systemctl stop pjp-dse
-cd /srv/pjp-dse
+cd /opt/pjp-dse
 cp data/poi_pulldown.db /srv/backup-$(date +%F).db     # keep the last good one
 tar xzf /tmp/pjp-dse-<stamp>.tar.gz -C /tmp
-rsync -a --delete --exclude .env --exclude .venv --exclude data/ /tmp/pjp-dse-*/ /srv/pjp-dse/
+rsync -a --delete --exclude .env --exclude .venv --exclude data/ /tmp/pjp-dse-*/ /opt/pjp-dse/
 cp /tmp/pjp-dse-*/data/poi_pulldown.db data/poi_pulldown.db
 cp /tmp/pjp-dse-*/data/mapcache/* data/mapcache/ 2>/dev/null || true
 sudo systemctl start pjp-dse
