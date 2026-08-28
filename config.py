@@ -6,6 +6,7 @@ file, its own .env. It reads nothing from — and writes nothing to — the
 IM3 / 3ID store-location systems.
 """
 import os
+import sys
 
 
 # ── the ground under the polygons ────────────────────────────────────────
@@ -34,8 +35,25 @@ DATA_DIR    = os.path.join(BASE_DIR, "data")
 EXPORT_DIR  = os.path.join(BASE_DIR, "exports")
 DB_PATH     = os.getenv("DB_PATH", os.path.join(DATA_DIR, "poi_pulldown.db"))
 OVERTURE_CACHE = os.path.join(DATA_DIR, "overture_aoi.parquet")
+# A HARDENED INSTANCE RUNS ON A READ-ONLY FILESYSTEM BY DESIGN
+# systemd's ProtectSystem=strict makes everything read-only except the one
+# ReadWritePaths, and on the shared server that is data/ alone. exports/ is
+# written by the CSV and map-export routes, every one of which PUBLIC_MODE
+# already refuses -- so the public instance will never use the directory it
+# was dying at import to create.
+#
+# Failing to start over a directory this instance cannot use, and does not
+# need, is the tail wagging the dog. A read-only filesystem is noted and
+# passed over; a genuinely missing directory that we COULD have made is
+# still an error worth seeing.
 for _d in (DATA_DIR, EXPORT_DIR):
-    os.makedirs(_d, exist_ok=True)
+    try:
+        os.makedirs(_d, exist_ok=True)
+    except OSError as _exc:                                       # EROFS, EACCES
+        if not os.path.isdir(_d):
+            sys.stderr.write("config: %s is not writable (%s) — features "
+                             "that write there are unavailable\n"
+                             % (_d, _exc.strerror))
 
 # ── connection 1: Overture (no key, public parquet on S3) ────────────────
 OVERTURE_RELEASE = os.getenv("OVERTURE_RELEASE", "2026-07-22.0").strip()
