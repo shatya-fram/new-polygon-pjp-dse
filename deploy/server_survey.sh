@@ -7,8 +7,13 @@
 # configuration. Safe to run on a box carrying live applications, which is
 # the whole point of it.
 #
-#     scp deploy/server_survey.sh pjp@188.245.228.253:/tmp/
-#     ssh pjp@188.245.228.253 'bash /tmp/server_survey.sh' | tee survey.txt
+#     ssh <your-admin-user>@188.245.228.253 'bash -s' \
+#         < deploy/server_survey.sh | tee survey.txt
+#
+# Run it as the account you ALREADY use on this box -- the one that manages
+# the applications running there. Not `pjp`: that is the dedicated user the
+# install creates later, and this survey is what decides whether the name is
+# even free. Piping over stdin avoids needing a writable /tmp first.
 #
 # Some sections need root to be complete. Without sudo it still runs and
 # says which answers are partial rather than printing a confident blank.
