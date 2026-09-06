@@ -203,7 +203,7 @@ not a bug to fix.
 `/map-workspace` is the page this application is now mainly about. Cloud
 boundaries underneath, the user's own DSE-to-outlet workbook read over them in
 the browser, cleared on sign-out. `templates/map_workspace.html` +
-`static/js/map_workspace.js` (~158 KB) + `static/css/workspace.css`.
+`static/js/map_workspace.js` (~185 KB) + `static/css/workspace.css`.
 
 **One `L.canvas()` renderer for every layer, and `reorder()` after every add.**
 Leaflet gives each *pane* its own `<canvas>`, and a canvas is opaque to the
@@ -537,5 +537,176 @@ down to the workspace entry when `WORKSPACE_ONLY` is set.
 `MAX_UPLOAD_MB` (1024 by default — these workbooks are large),
 `HOME_MINLON`/`MINLAT`/`MAXLON`/`MAXLAT` (what `config.on_map()` and
 `purge_offmap.py` test against), `DB_PATH`, `BEHIND_PROXY` (defaults ON
-under `PUBLIC_MODE`, so `ProxyFix` trusts one hop of `X-Forwarded-*`). `GOOGLE_API_KEY` belongs to the
+under `PUBLIC_MODE`, so `ProxyFix` trusts one hop of `X-Forwarded-*`),
+`BASEMAP_PROVIDER` / `CARTO_API_KEY` (tile source; `gray` by default), and
+the gunicorn knobs `BIND` / `WEB_WORKERS` / `WEB_TIMEOUT` / `LOG_LEVEL`. `GOOGLE_API_KEY` belongs to the
 inherited POI pullers and must not exist on a published host.
+
+## The server as it actually landed (2026-08-28)
+
+`DEPLOY.md` is the procedure; these are the settled facts a change has to
+respect, and the reasons are in the files themselves — `deploy/gunicorn.conf.py`
+and `deploy/pjp-dse.service` are written as arguments, not as configuration.
+
+| | |
+|---|---|
+| host | shared Hetzner box, 2 cores · 3.7 GB · eight other applications |
+| runs as | systemd `pjp-dse`, user `pjp`, `WorkingDirectory=/opt/pjp-dse` |
+| server | **gunicorn**, `deploy/gunicorn.conf.py`, `127.0.0.1:8096` |
+| workers | **2 sync**, fixed — not derived from cores; `max_requests=400` |
+| ceiling | `MemoryHigh=450M` / `MemoryMax=600M`, `CPUQuota=50%` |
+| nginx | `pjp.gamextopia.id` → upstream `pjp_dse`; never `default_server` |
+| code | `git pull` from `origin` via `deploy/update.sh` |
+| data | `rsync` from the Mac, separately — git never carries `data/` |
+
+- **`app.run` is the laptop's server only.** `./start.sh` (port 5002, debug on)
+  is for development; nothing on the box should reach it. Port numbers differ
+  by design — 5002 local, 8096 behind nginx — so any health check, proxy pass
+  or firewall rule has to say which one it means.
+- **The unit runs under `ProtectSystem=strict` with `ReadWritePaths=/opt/pjp-dse/data`.**
+  Everything else is read-only at runtime, which is why `config.py` *notes*
+  an unwritable `exports/` and carries on instead of dying at import. Any new
+  module that creates a directory at import time must do the same, or the
+  published instance stops booting over a directory it will never use.
+- **A code deploy must not be able to touch the data, and a data refresh must
+  not be able to ship half-finished code.** That is why they travel by
+  different routes; keep them apart.
+
+Two things in `deploy/` still point at the pre-8096 shape and will bite on
+the server — neither is a design decision, both are leftovers:
+
+- `deploy/update.sh:52` health-checks `localhost:5002`. Under systemd the app
+  is on 8096, so the check fails and, under `set -e`, a successful update
+  exits non-zero right after printing `up`.
+- `deploy/update.sh` defaults `BRANCH=main`; this repository's branch is
+  **`master`** (`origin` = `git@github.com:shatya-fram/new-polygon-pjp-dse.git`),
+  so `git fetch origin main` fails before anything else runs.
+
+`DEPLOY.md` §4 and §9 quote 5002 in the same way — read them as "the app's
+port", and check `deploy/gunicorn.conf.py` for what it actually is.
+
+## UNIKDSE is the grouping key (2026-09-06)
+
+Asked for on 6 September: *"use UNIKDSE for the grouping of polygon as final
+grouping instead of the DSE ID, DSECODE, DSE."* Everything that groups the
+workbook now groups on the **person**, not on the code a brand gave them.
+
+A demarkasi export lists 3ID and IM3 separately and gives the same rep a
+different DSE CODE under each — `CVSCJU013` on one side, `1-163544572541`
+on the other. Grouping on the code drew that rep as **two territories**.
+In the August Jaya file:
+
+| | |
+|---|---|
+| distinct DSE CODE | 1,501 |
+| distinct UNIKDSE | **1,347** |
+| people carrying two codes | 154 (one 3ID, one IM3 — never more) |
+| DSE CODE mapping to two UNIKDSE | **0** — the merge is clean, many-to-one |
+
+`readOutlets` now writes the person into **`r.dse`** and keeps the brand code
+in **`r.dsecode`**. Nothing downstream had to change: the roster, the DSE
+filter, the border build (`points: [r.dse, lat, lon]`), the PJP review, the
+boundary scan, every profile and every export were already keyed on `r.dse`,
+so they all regrouped at once. `repKey()` is now simply `r.dse`.
+
+**`UNIKID` was in the `unikdse` alias list and is gone from it.** `UNIKID` is
+`Brand + Outlet Code` — **73,699 distinct values, one per row**. While the
+field was decoration that alias cost nothing; as the grouping key it would
+have made one "rep" per outlet and drawn 73,699 territories the size of a
+dot. A file with no UNIKDSE column but a UNIKID one is exactly the case that
+would have hit it.
+
+**The two key columns are resolved by name, not by header order.**
+`resolveKeys()` runs after the generic header matcher. The matcher walks
+columns left to right and gives each to the first field that claims it, so a
+file with UNIKDSE standing left of DSE CODE would have handed the code slot
+to the person column and left the brand code unread. With no code column at
+all, the person column satisfies `NEED` on its own.
+
+**The guard.** A person key merges codes; it cannot produce more groups than
+the codes it merges. If it does, that column is not a person — `readOutlets`
+falls back to the brand code, sets `LOCAL.basis = "code"`, and every panel
+that shows a rep count says which key it counted (`keyLabel()`). Same
+fallback when the column is absent or blank on every row.
+
+What moves, measured by replaying the rule in Python over the same 73,699
+rows (`urban 1.5 km · rural 4 km`, nearest **sibling**, >50 km set aside):
+
+| grouped by | groups | flagged | urban | rural | groups affected |
+|---|---|---|---|---|---|
+| DSE CODE | 1,501 | 1,214 | 943 | 271 | 647 |
+| **UNIKDSE** | **1,347** | **1,133** | 869 | 264 | 599 |
+
+**81 flags disappear** because a rep's 3ID outlet is now a sibling of their
+own IM3 outlet — the gap was never a real detour, only an artefact of the
+two brands being counted as two people. (Replay figures: the app measures
+inside the current slice and joins density its own way, so treat these as
+the size of the move, not as the panel's exact output.)
+
+**The identity check is untouched: still 32.** Every one of the 32 outlet
+codes under two groups is two *different* people, so merging brands does not
+absorb a single one.
+
+## When UNIKDSE holds a rayon (2026-09-06)
+
+`Recap Polygon SA Inner 6 Sept.xlsx` — 13,487 rows, no `DSE CODE` column at
+all — has **UNIKDSE filled in by hand on 56% of its rows, with the rayon**:
+`R1`, `R2`, `R 4 DT`, `R 13 DB`, `RAYON 1` … `RAYON 32`, plus `0` and `#N/A`
+from a failed lookup. Grouped on that, `R1` is one "DSE" holding **224
+outlets across two branches and five microclusters, 16.8 km corner to
+corner**, mixing IM3 (191) and 3ID (33). A real rep in the same file holds a
+median of 48 within a few km.
+
+| what UNIKDSE holds | values | rows | outlets/group median · max |
+|---|---|---|---|
+| a rep code (`DSE…`, `CSO…`, `1-…`, `2613…`) | 109 | 5,970 | 48 · 133 |
+| a rayon label | 72 | 7,472 | 102 · 224 |
+| `0` / `#N/A` | 2 | 45 | — |
+
+**The rep is recoverable from the same file, and it is not KETERANGAN.**
+`KETERANGAN` looked promising — filled on 3,528 of the broken rows — but its
+58 values never appear as a UNIKDSE anywhere, and they are `CSOBKSS-05`
+shaped: the CSO, a supervisor. **`Hybrid Pairing DSE Code` is the rep.** On a
+hybrid outlet the paired rep is the same human, 41 of its values also appear
+as a UNIKDSE on other rows in the file, and the geometry settles it:
+
+| rayon rows keyed by | groups | outlets/group median | spread km median · p90 · max |
+|---|---|---|---|
+| the rayon label | 74 | 102 | 4.6 · 14.5 · 29.2 |
+| KETERANGAN | 58 | 61 | 5.3 · 9.5 · 15.3 |
+| **pairing DSE code** | **93** | **54** | **4.1 · 5.6 · 7.1** |
+
+So `readOutlets` resolves the key in this order — **UNIKDSE · pairing DSE
+code (brand suffix dropped) · brand code · the label, tagged**:
+
+- `personOf()` rejects a value that is empty, junk (`0`, `#N/A`, `-`,
+  `NULL`, `#REF!`) or matches `/^(R|RAYON)\s*\d+(?:[\s\-]*[A-Z]{1,3})?$/i`.
+  That pattern is deliberately narrow: `DSEKRWG06`, `2613051097` and
+  `1-28825212763` all pass it.
+- `dropBrand()` turns `26130531273ID` into `2613053127`, so the two
+  spellings of one rep land in the same group.
+- A row that answers none of them keeps its label under a **`RAYON · `
+  prefix** — visible in the roster, the polygon, the profile and both CSVs,
+  so it can never be read as a person. All 2,601 such rows are NON HYBRID,
+  which is why no pairing exists for them: nothing in this file names their
+  rep, and only a corrected export can.
+
+Every panel says where the keys came from (`keyNote()`), and both exports
+carry a **Key from** column.
+
+Result on the recap file — verified by replaying the same regexes in node
+over all 13,487 rows, and confirmed to change nothing on the August master:
+
+| | recap, before | recap, after | August master |
+|---|---|---|---|
+| groups | 183 | **231** | 1,347 (unchanged) |
+| outlets/group median | 74 | **54** | 53 |
+| largest group | **224** | 134 | 149 |
+| keys from UNIKDSE / pairing / rayon | — | 5,970 / 4,916 / 2,601 | 73,699 / 0 / 0 |
+
+**The old `groups > codes` guard is gone.** It assumed a person key only ever
+merges codes; repairing a rayon row SPLITS one label into the several reps
+under it, so more groups than raw values is now the wanted outcome. What
+replaced it catches the case that actually matters — a column that
+identifies the outlet rather than the rep (`UNIKID`, one value per row):
+if the key produces close to one group per row, it is not a person.

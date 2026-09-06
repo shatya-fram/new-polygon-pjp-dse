@@ -128,6 +128,26 @@ DISPLAY_COLUMNS = [
 ]
 
 
+def _asset_v():
+    """Cache-buster for the workspace bundle.
+
+    nginx serves /static/ with `expires 1h`. Without a changing query a
+    deploy leaves every browser that has the page open on the PREVIOUS
+    JavaScript for up to an hour -- which is read as "the deploy did not
+    work", and answered by deploying again. The stamp is the newest mtime
+    among the files that actually change together.
+    """
+    newest = 0
+    for rel in ("js/map_workspace.js", "js/basemap.js", "css/workspace.css"):
+        try:
+            m = os.path.getmtime(os.path.join(app.static_folder, rel))
+        except OSError:
+            continue
+        if m > newest:
+            newest = m
+    return str(int(newest))
+
+
 @app.context_processor
 def globals_():
     ready = db.db_exists()
@@ -142,7 +162,8 @@ def globals_():
             "menus": territory_api.MENUS, "active_menu": "config",
             "google_ready": bool(config.GOOGLE_API_KEY),
             "overture_release": config.OVERTURE_RELEASE,
-            "db_name": os.path.basename(config.DB_PATH)}
+            "db_name": os.path.basename(config.DB_PATH),
+            "asset_v": _asset_v()}
 
 
 @app.route("/")

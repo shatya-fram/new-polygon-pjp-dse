@@ -422,11 +422,103 @@
     supervisor:  ["supervisorcode", "supervisor", "spv"],
     schedule:    ["jadwalkunjungan", "pjp", "visitfreq"],
     pairing:     ["pairingoutletcode", "outletpairing"],
+    // The DSE CODE of the paired rep on the other brand. On a hybrid
+    // outlet that is the SAME HUMAN, which is what makes it usable as a
+    // person key when UNIKDSE has been overwritten -- see `personOf`.
+    pair_dse:    ["hybridpairingdsecode", "pairingdsecode", "dsepairing"],
     remarks:     ["remarks", "remark", "flag", "status"],
     // The identity of the PERSON, as against the code a brand gives them.
-    unikdse:     ["unikdse", "unikid"]
+    // UNIKDSE AND NOTHING ELSE. `UNIKID` in these exports is
+    // Brand + Outlet Code -- unique on every one of the 73,699 rows -- and
+    // it used to be accepted here. That was harmless while this field was
+    // decoration. It is the GROUPING KEY now, and a file without a UNIKDSE
+    // column would have had UNIKID shatter 1,347 people into one "rep" per
+    // outlet, turning every territory into a dot. `resolveKeys` below takes
+    // the column by name instead.
+    unikdse:     ["unikdse"]
   };
   var NEED = ["dse", "lat", "lon"];
+
+  /* ══════════════════════════════════════════════════════════════════════
+     WHO A ROW BELONGS TO — UNIKDSE, NOT DSE CODE
+
+     A demarkasi export lists 3ID and IM3 separately and gives the same
+     person a different DSE CODE under each: CVSCJU013 on one side,
+     1-163544572541 on the other. Grouping on the code draws a rep who
+     carries both brands as two territories -- 1,501 codes for 1,347
+     people in the August Jaya file. UNIKDSE is the person, and the person
+     is what a round, a polygon and a PJP review are actually about.
+
+     So UNIKDSE is the grouping key everywhere the file is grouped: the
+     roster, the border build, the PJP review, every profile and every
+     export. The brand code stays on the row as `dsecode` and is still
+     shown, because it is what a partner's own system calls that rep.
+
+     The two columns are resolved BY NAME here rather than left to the
+     header matcher. The matcher walks columns left to right and gives each
+     one to the first field that claims it, so a file with UNIKDSE standing
+     to the left of DSE CODE would hand the code slot to the person column
+     and leave the brand code unread.
+     ══════════════════════════════════════════════════════════════════════ */
+  /* ── WHEN THE PERSON COLUMN DOES NOT HOLD A PERSON ────────────────────
+     A recap export can arrive with UNIKDSE filled in by hand, and what
+     gets filled in is the rayon: `R1`, `R2`, `R 4 DT`, `RAYON 30`. Grouped
+     on that, one "DSE" becomes a whole rayon -- 224 outlets over two
+     branches and five microclusters, 16.8 km corner to corner, where a
+     real rep holds a median of 53 within a few km. The polygon drawn from
+     it is a rayon, and every PJP gap measured inside it is a gap between
+     DIFFERENT PEOPLE, which is worse than no answer.
+
+     Three tests, cheap and in this order:
+       · junk      — `0`, `#N/A`, `-`, empty: a lookup that failed
+       · rayon     — R / RAYON followed by a number, with an optional short
+                     suffix (`R 13 DB`). Narrow on purpose: `DSEKRWG06`,
+                     `2613051097` and `1-28825212763` all pass it.
+       · otherwise it is a person.
+
+     A row that fails them falls back to the PAIRING DSE CODE, because on a
+     hybrid outlet the paired rep is the same human -- and it holds up
+     geometrically: keyed that way those rows form groups of median 54
+     outlets spread 4.1 km, against 102 and 14.5 km under the rayon label.
+     A NON HYBRID row has no pairing, so nothing in the file can name its
+     rep; it keeps the label under a `RAYON · ` prefix so that neither the
+     roster, the polygon, the profile nor the CSV can be read as a person.
+     ─────────────────────────────────────────────────────────────────── */
+  var KEY_JUNK = { "": 1, "0": 1, "#N/A": 1, "N/A": 1, "NA": 1, "-": 1,
+                   "NULL": 1, "#REF!": 1, "#VALUE!": 1 };
+  var KEY_RAYON = /^(R|RAYON)\s*\d+(?:[\s\-]*[A-Z]{1,3})?$/i;
+  var RAYON_TAG = "RAYON · ";
+  function personOf(v) {
+    var t = txt(v);
+    if (!t) return "";
+    if (KEY_JUNK[t.toUpperCase()]) return "";
+    if (KEY_RAYON.test(t)) return "";
+    return t;
+  }
+  // `26130531273ID` and `2613053127` are one rep written twice. The brand
+  // suffix is dropped so the two halves land in the same group.
+  function dropBrand(v) {
+    return String(v == null ? "" : v).replace(/\s*(3ID|IM3)\s*$/i, "").trim();
+  }
+
+  var DSE_CODE_COLS = ["dsecode", "dse", "dseid", "dsecodenew"];
+  function resolveKeys(header, m) {
+    var unik = -1, code = -1;
+    for (var i = 0; i < header.length; i++) {
+      var n = nkey(header[i]);
+      if (!n) continue;
+      if (unik < 0 && n === "unikdse") unik = i;
+      if (code < 0 && DSE_CODE_COLS.indexOf(n) >= 0) code = i;
+    }
+    if (unik >= 0) { m.idx.unikdse = unik; m.src.unikdse = header[unik]; }
+    else { delete m.idx.unikdse; delete m.src.unikdse; }
+    // No code column at all: the person column is the only DSE this file
+    // has, and NEED is satisfied by it rather than failing the sheet.
+    var d = code >= 0 ? code : unik;
+    if (d >= 0) { m.idx.dse = d; m.src.dse = header[d]; }
+    else { delete m.idx.dse; delete m.src.dse; }
+    return m;
+  }
 
   /* ══════════════════════════════════════════════════════════════════════
      SITE LOCATIONS — A SECOND FILE, WITH ITS OWN VOCABULARY
@@ -462,7 +554,9 @@
   // types somebody has to keep in step with the network.
   var SITE_HUES = ["#E0721F", "#0F9CB0", "#8659E8", "#4E9E4E", "#C6407A",
                    "#B08900", "#3C6DD0", "#8A8A8A"];
-  var LABEL = { dse: "DSE", outlet_code: "Outlet ID", outlet_name: "Outlet name",
+  var LABEL = { dse: "DSE code", unikdse: "UNIKDSE — grouping key",
+    pair_dse: "Pairing DSE code — key fallback",
+    outlet_code: "Outlet ID", outlet_name: "Outlet name",
     lat: "Latitude", lon: "Longitude", desa: "Desa / Kelurahan",
     kecamatan: "Kecamatan", kabupaten: "Kabupaten", mc: "Microcluster",
     category: "Category", brand: "Brand", partner: "Partner territory",
@@ -546,7 +640,7 @@
     for (var g = 0; g < grids.length; g++) {
       var rows = grids[g].rows;
       for (var probe = 0; probe < Math.min(6, rows.length); probe++) {
-        var m = mapHeader(rows[probe] || []);
+        var m = resolveKeys(rows[probe] || [], mapHeader(rows[probe] || []));
         var have = NEED.filter(function (f) { return m.idx[f] !== undefined; });
         if (!near || have.length > near.have)
           near = { sheet: grids[g].name, row: probe + 1, have: have.length };
@@ -567,13 +661,31 @@
       var i = idx[f];
       return (i === undefined || i >= row.length) ? null : row[i];
     }
-    var out = [], stats = { read: 0, no_dse: 0, no_coords: 0 }, dse = {}, box = null;
+    var out = [], stats = { read: 0, no_dse: 0, no_coords: 0, no_unik: 0 },
+        dse = {}, code2 = {}, box = null,
+        ksrc = { unikdse: 0, pairing: 0, code: 0, rayon: 0 };
     for (var r = 0; r < t.rows.length; r++) {
       var row = t.rows[r] || [];
       if (!row.length) continue;
       stats.read++;
+      // THE GROUPING KEY, in the order a person can be trusted from:
+      // UNIKDSE · the paired rep on the other brand · the brand code. A row
+      // that answers none of them keeps its rayon label, tagged, rather
+      // than being dropped or passed off as somebody.
       var code = txt(cell(row, "dse"));
-      if (!code) { stats.no_dse++; continue; }
+      var unik = txt(cell(row, "unikdse"));
+      var gkey = personOf(unik), gsrc = "unikdse";
+      if (!gkey) {
+        gkey = personOf(dropBrand(cell(row, "pair_dse"))); gsrc = "pairing";
+      }
+      if (!gkey && code !== unik) { gkey = personOf(code); gsrc = "code"; }
+      if (!gkey) {
+        var lab = unik || code;
+        if (!lab) { stats.no_dse++; continue; }
+        gkey = RAYON_TAG + lab; gsrc = "rayon";
+      }
+      ksrc[gsrc]++;
+      if (!unik) stats.no_unik++;
       var lat = numOf(cell(row, "lat")), lon = numOf(cell(row, "lon"));
       // Latitude here is about -6 and longitude about 107, so when the two
       // are swapped the numbers settle it and the headings get no vote.
@@ -583,7 +695,9 @@
       if (lat == null || lon == null) { stats.no_coords++; continue; }
       var rem = txt(cell(row, "remarks"));
       out.push({
-        dse: code,
+        dse: gkey,
+        ksrc: gsrc,
+        dsecode: code || "",
         code: txt(cell(row, "outlet_code")) || "",
         name: txt(cell(row, "outlet_name")) || "",
         desa: txt(cell(row, "desa")) || "",
@@ -595,17 +709,42 @@
         freq: txt(cell(row, "schedule")) || "",
         pair: txt(cell(row, "pairing")) || "",
         brand: txt(cell(row, "brand")) || "",
-        unik: txt(cell(row, "unikdse")) || "",
+        unik: unik || "",
         rem: rem || "",
         ono: !!(rem && /ONO/i.test(rem)),
         lat: lat, lon: lon
       });
-      dse[code] = (dse[code] || 0) + 1;
+      dse[gkey] = (dse[gkey] || 0) + 1;
+      if (code && code !== unik) code2[code] = 1;
       box = box ? [Math.min(box[0], lon), Math.min(box[1], lat),
                    Math.max(box[2], lon), Math.max(box[3], lat)]
                 : [lon, lat, lon, lat];
     }
+    /* ── IS THAT COLUMN A KEY AT ALL? ────────────────────────────────
+       Not "does it merge codes" any more -- repairing a rayon row SPLITS
+       one label into the several reps hiding under it, so more groups than
+       raw values is now the normal, wanted outcome. What is still worth
+       catching is a column that identifies the OUTLET rather than the rep:
+       `UNIKID` is Brand+Outlet Code, one value per row, and keyed on it the
+       map draws a territory per shop. A rep key is never close to one
+       group per row, at any file size. */
+    var nGroup = Object.keys(dse).length;
+    var perRow = out.length ? nGroup / out.length : 0;
+    var basis = (t.src.unikdse && ksrc.unikdse + ksrc.pairing) ? "person" : "code";
+    if (perRow >= 0.8 && Object.keys(code2).length) {
+      basis = "code";                    // one group per row — not a person
+      dse = {};
+      out.forEach(function (r) {
+        r.dse = r.dsecode || r.dse; r.ksrc = "code";
+        dse[r.dse] = (dse[r.dse] || 0) + 1;
+      });
+      ksrc = { unikdse: 0, pairing: 0, code: out.length, rayon: 0 };
+    }
+    var rayonKeys = 0;
+    for (var gk in dse) if (gk.indexOf(RAYON_TAG) === 0) rayonKeys++;
     return { rows: out, stats: stats, dse: dse, box: box,
+             basis: basis, codes: Object.keys(code2).length,
+             ksrc: ksrc, rayonKeys: rayonKeys,
              sheet: t.sheet, src: t.src, idx: t.idx, filename: filename };
   }
 
@@ -769,13 +908,34 @@
      of the two it is counting rather than leaving a reader to wonder why
      two figures for the same file disagree.
 
-     The DSE filter and the roster still key on DSE CODE, because that is
-     what identifies a set of rows in the file. Identity and selection are
-     different jobs.
+     Selection follows identity now. The roster, the DSE filter, the
+     border build, the PJP review and every export group on the person as
+     well -- `readOutlets` puts the person key in `r.dse` and keeps the
+     brand code in `r.dsecode` -- so the map draws ONE territory for each of
+     the 154 people who carry both brands, not two. `repKey` therefore
+     reads what `r.dse` already holds.
      ══════════════════════════════════════════════════════════════════════ */
-  function repKey(r) { return r.unik || r.dse; }
+  function repKey(r) { return r.dse; }
   function hasUnik() {
-    return !!(LOCAL && LOCAL.src && LOCAL.src.unikdse);
+    return !!(LOCAL && LOCAL.basis === "person");
+  }
+  // What the key IS, in one word, for any panel showing a count of reps.
+  // A figure whose basis is not stated is a figure somebody will argue
+  // with -- 1,347 and 1,501 are both right, for different questions.
+  function keyLabel() {
+    return LOCAL && LOCAL.basis === "person" ? "UNIKDSE" : "DSE code";
+  }
+  // Where the keys actually came from, said out loud. A repaired key that
+  // does not announce itself is a number somebody will trust too far.
+  function keyNote() {
+    if (!LOCAL || !LOCAL.ksrc) return "";
+    var k = LOCAL.ksrc, bits = [];
+    if (k.pairing) bits.push(num(k.pairing)
+      + " rows keyed from the pairing DSE code (UNIKDSE held a rayon)");
+    if (k.rayon) bits.push("<b>" + num(k.rayon) + " rows still rayon-level</b>"
+      + (LOCAL.rayonKeys ? " in " + num(LOCAL.rayonKeys) + " labels" : "")
+      + " — no rep named for them anywhere in the file");
+    return bits.join(" · ");
   }
   function repCount(rows) {
     var by = {};
@@ -926,7 +1086,10 @@
              { k: "Visit freq", v: esc(r.freq || "—"), dash: true },
              { k: "Flag", v: esc(r.rem || "—"), dash: true }]),
       '<span class="k">Record</span>'
-      + rows([{ a: "Supervisor", b: r.spv || "—" },
+      + rows([{ a: "Key from", b: r.ksrc === "pairing"
+                  ? "pairing DSE code" : (r.ksrc || "—") },
+              { a: "DSE code (brand)", b: r.dsecode || "—" },
+              { a: "Supervisor", b: r.spv || "—" },
               { a: "Pairing outlet", b: r.pair || "—" },
               { a: "Longitude", b: r.lon.toFixed(6) },
               { a: "Latitude", b: r.lat.toFixed(6) },
@@ -1348,7 +1511,7 @@
       return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
     }
     var head = ["Outlet Code", "Outlet Name", "Brand",
-                "DSE Code", "UNIKDSE", "Supervisor",
+                "DSE (grouping key)", "Key from", "DSE code", "Supervisor",
                 "Desa / Kelurahan", "Kecamatan", "City / Kabupaten",
                 "Microcluster", "Region", "Area", "Sales Area / Branch",
                 "Territory",
@@ -1359,7 +1522,7 @@
                 "Latitude", "Longitude"];
     var body = BOUNDS.rows.map(function (r) {
       return [r.code, r.name, r.brand,
-              r.dse, r.unik, r.spv,
+              r.dse, r.ksrc, r.dsecode, r.spv,
               r.desa, r.kec, r.kab,
               r.mc, r.region, r.area, r.branch, r.terr,
               r.stratum, r.known ? Math.round(r.density) : "",
@@ -1571,14 +1734,17 @@
   function dashLocal() {
     var connected = !!LOCAL;
     $("dbOut").textContent = connected ? num(LOCAL.rows.length) : "—";
-    var codes = connected ? Object.keys(LOCAL.dse).length : 0;
+    var codes = connected ? (LOCAL.codes || 0) : 0;
     var reps = connected ? repCount(LOCAL.rows) : 0;
     $("dbDse").textContent = connected ? num(reps) : "—";
     $("dbDseNote").innerHTML = !connected ? "" : (hasUnik()
-      ? (codes === reps ? "by UNIKDSE"
-         : num(codes) + " brand codes · " + num(codes - reps)
-           + " work both brands")
-      : "by DSE code — no UNIKDSE column in this file");
+      ? (codes <= reps ? "grouped by UNIKDSE"
+         : "grouped by UNIKDSE · " + num(codes) + " brand codes · "
+           + num(codes - reps) + " work both brands")
+      : "grouped by DSE code — no usable UNIKDSE column in this file")
+      + (LOCAL.ksrc && LOCAL.ksrc.rayon
+         ? "<br>" + num(LOCAL.ksrc.rayon) + " outlets still carry a rayon "
+           + "label instead of a rep" : "");
     $("dbAlert").hidden = connected;
 
     dashDupe();
@@ -1719,9 +1885,11 @@
      server on its way back to the desk it came from. */
   $("tbExport").addEventListener("click", function () {
     if (!shown.length) return;
-    var cols = ["code", "name", "kec", "desa", "dse", "mc", "cat", "spv",
+    var cols = ["code", "name", "kec", "desa", "dse", "ksrc", "dsecode",
+                "mc", "cat", "spv",
                 "freq", "pair", "rem", "lat", "lon"];
-    var head = ["Outlet", "Name", "Kecamatan", "Desa", "DSE", "Microcluster",
+    var head = ["Outlet", "Name", "Kecamatan", "Desa", "DSE (grouping key)",
+                "Key from", "DSE code", "Microcluster",
                 "Category", "Supervisor", "Visit freq", "Pairing", "Flag",
                 "Latitude", "Longitude"];
     function q(v) {
@@ -1852,7 +2020,8 @@
     // column is shown in red rather than left out, because "site_id
     // unmatched" is the thing worth knowing.
     var src = LOCAL.src || {};
-    var order = ["outlet_code", "outlet_name", "dse", "lat", "lon", "desa",
+    var order = ["outlet_code", "outlet_name", "unikdse", "pair_dse",
+                 "dse", "lat", "lon", "desa",
                  "kecamatan", "mc", "category", "supervisor", "schedule",
                  "pairing", "remarks"];
     $("ldMap").innerHTML = order.map(function (f) {
@@ -1860,8 +2029,9 @@
       return '<div class="mw-chip' + (s ? "" : " miss") + '">'
         + esc(s || "not found") + " → " + esc(LABEL[f] || f) + "</div>";
     }).join("");
-    $("ldSheet").textContent = "Read from sheet “" + LOCAL.sheet + "” in "
-      + LOCAL.filename + ".";
+    $("ldSheet").innerHTML = "Read from sheet “" + esc(LOCAL.sheet)
+      + "” in " + esc(LOCAL.filename) + "."
+      + (keyNote() ? "<br>" + keyNote() + "." : "");
     $("ldStep2").hidden = false;
 
     var files = [LOCAL.filename];
@@ -1869,7 +2039,7 @@
     $("ldSummary").textContent = files.length
       + (files.length === 1 ? " file · " : " files · ")
       + num(LOCAL.rows.length) + " outlets · "
-      + num(Object.keys(LOCAL.dse).length) + " DSE"
+      + num(Object.keys(LOCAL.dse).length) + " DSE (by " + keyLabel() + ")"
       + (SITES ? " · " + num(SITES.rows.length) + " sites" : "");
     $("ldStep3").hidden = false;
     lerr(errs && errs.length ? errs.join("<br>") : "");
@@ -2173,8 +2343,11 @@
         + "file falls in this slice.</div>";
       return;
     }
+    var rayonHere = codes.filter(function (c) {
+      return c.indexOf(RAYON_TAG) === 0; }).length;
     el.innerHTML = '<div class="mw-dsehead">' + num(codes.length)
-      + " DSE · local file</div>"
+      + " DSE · by " + keyLabel()
+      + (rayonHere ? " · " + num(rayonHere) + " rayon-level" : "") + "</div>"
       + codes.map(function (c) {
           return '<button type="button" class="mw-drow'
             + (c === dseFilter ? " on" : "") + '" data-dse="' + esc(c)
@@ -3431,7 +3604,8 @@
             t.bad++;
             var gb = kx[norm(o.kec)] || {};
             out.push({ code: o.code, name: o.name, brand: o.brand || "",
-              dse: code, unik: o.unik || "", spv: o.spv || "",
+              dse: code, ksrc: o.ksrc || "", dsecode: o.dsecode || "",
+              spv: o.spv || "",
               desa: o.desa || "", kec: o.kec || "", kab: o.kab || "",
               mc: o.mc || "", region: gb.region || "", area: gb.area || "",
               branch: gb.branch || "", terr: gb.terr || "",
@@ -3475,7 +3649,8 @@
           t.repsFlagged[code] = 1;
           out.push({
             code: o.code, name: o.name, brand: o.brand || "",
-            dse: code, unik: o.unik || "", spv: o.spv || "",
+            dse: code, ksrc: o.ksrc || "", dsecode: o.dsecode || "",
+            spv: o.spv || "",
             desa: o.desa || "", kec: o.kec || "", kab: o.kab || "",
             mc: o.mc || "", region: g.region || "", area: g.area || "",
             branch: g.branch || "", terr: g.terr || "",

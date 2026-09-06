@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/territory.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/workspace.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/workspace.css', v=asset_v) }}">
 </head>
 <body class="terr mwpage">
 
@@ -492,7 +492,7 @@
 <!-- Same CDN Leaflet comes from, so it is not a new dependency to reach:
      if this is unreachable there is no map to draw on either. -->
 <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.mini.min.js"></script>
-<script src="{{ url_for('static', filename='js/basemap.js') }}"></script>
-<script src="{{ url_for('static', filename='js/map_workspace.js') }}"></script>
+<script src="{{ url_for('static', filename='js/basemap.js', v=asset_v) }}"></script>
+<script src="{{ url_for('static', filename='js/map_workspace.js', v=asset_v) }}"></script>
 </body>
 </html>
