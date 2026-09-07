@@ -406,6 +406,12 @@
   /* ─────────────────────────────────────────────────────────────────────
      LOCAL DATA — read here, held here, dropped here
      ───────────────────────────────────────────────────────────────────── */
+  /* The person column, in the spellings it actually arrives under. A
+     partner writing "UNIK DSE CODE" means UNIKDSE and would otherwise have
+     the column ignored altogether -- and an ignored person column is not a
+     visible failure, it is a map grouped by something else. */
+  var UNIK_COLS = ["unikdse", "unikdsecode", "uniqdse", "uniqdsecode",
+                   "kodeunikdse", "unikdseid"];
   var FIELDS = {
     dse:         ["dsecode", "dse", "dseid", "unikdse", "dsecodenew"],
     outlet_code: ["outletcode", "outletcod", "outletid", "idoutlet"],
@@ -419,9 +425,10 @@
     category:    ["outletcategory", "outletcat", "category"],
     brand:       ["brandname", "brand"],
     partner:     ["partnerterritoryname", "partnerterritory"],
-    supervisor:  ["supervisorcode", "supervisor", "spv"],
+    supervisor:  ["supervisorcode", "supervisor", "supervisorname",
+                  "namasupervisor", "spv"],
     schedule:    ["jadwalkunjungan", "pjp", "visitfreq"],
-    pairing:     ["pairingoutletcode", "outletpairing"],
+    pairing:     ["pairingoutletcode", "outletpairingcode", "outletpairing"],
     // The DSE CODE of the paired rep on the other brand. On a hybrid
     // outlet that is the SAME HUMAN, which is what makes it usable as a
     // person key when UNIKDSE has been overwritten -- see `personOf`.
@@ -435,7 +442,7 @@
     // column would have had UNIKID shatter 1,347 people into one "rep" per
     // outlet, turning every territory into a dot. `resolveKeys` below takes
     // the column by name instead.
-    unikdse:     ["unikdse"]
+    unikdse:     UNIK_COLS
   };
   var NEED = ["dse", "lat", "lon"];
 
@@ -507,7 +514,7 @@
     for (var i = 0; i < header.length; i++) {
       var n = nkey(header[i]);
       if (!n) continue;
-      if (unik < 0 && n === "unikdse") unik = i;
+      if (unik < 0 && UNIK_COLS.indexOf(n) >= 0) unik = i;
       if (code < 0 && DSE_CODE_COLS.indexOf(n) >= 0) code = i;
     }
     if (unik >= 0) { m.idx.unikdse = unik; m.src.unikdse = header[unik]; }
